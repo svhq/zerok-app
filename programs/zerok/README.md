@@ -74,4 +74,4 @@ The program IDL is available at [`idl/zerok.json`](./idl/zerok.json). It contain
 
 ## Source Code
 
-Full source code will be published after completion of security audit.
+The program IDL and interface are provided for reference and integration. On-chain program verification is available via [Solana Explorer](https://explorer.solana.com/address/JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx?cluster=devnet).

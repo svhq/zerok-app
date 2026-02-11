@@ -75,4 +75,4 @@ ZeroK is fully non-custodial:
 - **No account registration.** The protocol does not require usernames, emails, or any form of identity. Interaction is purely wallet-based.
 - **Client-side proof generation.** Proofs are generated entirely in the user's browser. Secret values never leave the user's device.
 
-The protocol has no administrative backdoor, upgrade key, or emergency withdrawal mechanism that could be used to seize user funds.
+The protocol is currently on devnet. Administrative controls are limited to operational functions and do not grant access to user funds — only the note holder can initiate a withdrawal.

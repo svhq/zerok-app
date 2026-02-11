@@ -55,7 +55,7 @@ zerok-app/
 | `circuits/` | Zero-knowledge circuit source written in Circom | Open source |
 | `web/` | Frontend application built with Next.js | Open source |
 | `docs-site/` | Documentation site powered by Nextra | Open source |
-| `programs/` | Program interface definition (IDL) | IDL available. Full source will be published after completion of security audit. |
+| `programs/` | Program interface definition (IDL) | Interface and deployed program ID available |
 
 ## Documentation
 

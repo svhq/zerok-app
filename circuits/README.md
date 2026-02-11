@@ -76,4 +76,4 @@ The circuit uses a 20-level binary Merkle tree with Poseidon hashing, supporting
 - **Curve**: BN254
 - **Hash function**: Poseidon (arithmetic-friendly, efficient in-circuit)
 
-This is the same circuit used in production. Verification keys are generated during trusted setup.
+This is the same circuit used in production. See [TRUSTED_SETUP.md](TRUSTED_SETUP.md) for ceremony details and the published [verification key](verification_key.json).
