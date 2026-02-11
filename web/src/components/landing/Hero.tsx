@@ -90,7 +90,7 @@ export default function Hero() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
-          <a href="https://devnet.zerok.app/app" className="btn-cta text-base px-8 py-3">
+          <a href="https://zerok.app/app" className="btn-cta text-base px-8 py-3">
             Launch App
           </a>
           <button

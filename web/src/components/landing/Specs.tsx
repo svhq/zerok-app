@@ -19,7 +19,7 @@ const performanceSpecs = [
 const securitySpecs = [
   { label: 'Nullifier Scheme', value: 'Hash(secret, path)', note: 'Double-spend prevention' },
   { label: 'Commitment', value: 'Poseidon(secret, nullifier)', note: 'Hidden in Merkle tree' },
-  { label: 'Trusted Setup', value: 'Powers of Tau', note: 'Community ceremony' },
+  { label: 'Trusted Setup', value: 'Powers of Tau', note: 'Phase 2 ceremony' },
   { label: 'Key Size', value: '~40 MB', note: 'Downloaded once' },
 ];
 

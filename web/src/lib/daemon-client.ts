@@ -9,7 +9,7 @@
  * aged out of the ACCEPTED_ROOT_SET, causing RootNotInRing errors.
  */
 
-const DAEMON_URL = 'http://localhost:8788';
+const DAEMON_URL = process.env.NEXT_PUBLIC_DAEMON_URL || '';
 
 export interface MerklePathResponse {
   root: string;           // Current root (0x-prefixed)

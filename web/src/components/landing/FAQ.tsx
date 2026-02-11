@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     question: 'Is ZeroK open-source?',
-    answer: 'Yes. All smart contracts and zero-knowledge circuits are open-source and will be publicly available for independent review. You don\'t have to trust us — you can verify the code yourself.',
+    answer: 'Yes. ZeroK\'s circuits and frontend are open source and available on GitHub for independent review. The protocol interface and documentation are publicly available.',
   },
   {
     question: 'What could theoretically leak my privacy?',

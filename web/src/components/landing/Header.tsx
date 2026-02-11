@@ -63,7 +63,7 @@ export default function Header() {
 
           {/* CTA Button */}
           <a
-            href="https://devnet.zerok.app/app"
+            href="https://zerok.app/app"
             className="btn-cta text-sm px-6 py-2"
           >
             Launch App

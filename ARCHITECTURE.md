@@ -16,7 +16,7 @@ ZeroK provides deposit-withdrawal unlinkability through zero-knowledge proofs. U
 4. **On-chain deposit** — SOL is transferred to the shared pool smart contract, and the commitment is recorded in the on-chain Merkle tree.
 5. **Note delivery** — The application produces a private note containing the secret values needed for withdrawal. This note is the user's sole proof of deposit ownership and must be stored securely.
 
-The smart contract holds all deposited funds. No third party — including the ZeroK team — can access or move these funds.
+The smart contract holds all deposited funds. Withdrawals require a valid zero-knowledge proof that only the note holder can generate.
 
 ## Withdrawal Flow
 

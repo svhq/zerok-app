@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 const footerLinks = {
   product: [
-    { label: 'Launch App', href: 'https://devnet.zerok.app/app' },
+    { label: 'Launch App', href: 'https://zerok.app/app' },
     { label: 'How It Works', href: '#how-it-works' },
     { label: 'Specs', href: '#specs' },
   ],
