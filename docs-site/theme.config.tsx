@@ -63,8 +63,8 @@ const config: DocsThemeConfig = {
           <a href="https://zerok.app" target="_blank" rel="noopener noreferrer" style={{ color: '#14B8A6' }}>
             Launch App
           </a>
-          <a href="https://devnet.zerok.app" target="_blank" rel="noopener noreferrer" style={{ color: '#9CA3AF' }}>
-            Devnet
+          <a href="https://github.com/svhq/zerok-app" target="_blank" rel="noopener noreferrer" style={{ color: '#9CA3AF' }}>
+            GitHub
           </a>
         </div>
       </div>

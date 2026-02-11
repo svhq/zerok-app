@@ -2,7 +2,7 @@
 
 **Privacy-preserving protocol for Solana**
 
-`GPL-3.0` | `Solana` | `Status: Devnet`
+`GPL-3.0` | `Solana`
 
 ---
 

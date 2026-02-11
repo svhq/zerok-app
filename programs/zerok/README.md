@@ -7,12 +7,12 @@ On-chain privacy protocol that verifies zero-knowledge proofs and manages deposi
 | Field | Value |
 |-------|-------|
 | **Program Name** | ZeroK |
-| **Network** | Solana Devnet |
+| **Network** | Solana |
 | **Program ID** | `JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx` |
 | **Framework** | Anchor |
 | **Proof System** | Groth16 (BN254) |
 
-[View on Solana Explorer](https://explorer.solana.com/address/JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx?cluster=devnet)
+[View on Solana Explorer](https://explorer.solana.com/address/JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx)
 
 ## Description
 
@@ -74,4 +74,4 @@ The program IDL is available at [`idl/zerok.json`](./idl/zerok.json). It contain
 
 ## Source Code
 
-The program IDL and interface are provided for reference and integration. On-chain program verification is available via [Solana Explorer](https://explorer.solana.com/address/JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx?cluster=devnet).
+The program IDL and interface are provided for reference and integration. On-chain program verification is available via [Solana Explorer](https://explorer.solana.com/address/JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx).
