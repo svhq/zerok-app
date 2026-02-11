@@ -1,0 +1,519 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Build timestamp: 2026-01-21T12:24:00Z - GitHub integration reconnected */
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --zk-bg: #0B0F17;
+  --zk-surface: #111827;
+  --zk-surface-light: #1F2937;
+  --zk-border: #243041;
+  --zk-teal: #14B8A6;
+  --zk-teal-light: #2DD4BF;
+  --zk-text: #E5E7EB;
+  --zk-text-muted: #9CA3AF;
+  --zk-success: #22C55E;
+  --zk-warning: #F59E0B;
+  --zk-danger: #EF4444;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  background: var(--zk-bg);
+  color: var(--zk-text);
+  min-height: 100vh;
+}
+
+/* Solid card style */
+.glass-card {
+  background: var(--zk-surface);
+  border: 1px solid var(--zk-border);
+  border-radius: 12px;
+}
+
+/* Overlay for modals */
+.glass-overlay {
+  background: rgba(11, 15, 23, 0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Teal primary button */
+.btn-primary {
+  background: var(--zk-teal);
+  color: var(--zk-bg);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--zk-teal-light);
+  box-shadow: 0 0 20px rgba(20, 184, 166, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Success button */
+.btn-success {
+  background: var(--zk-success);
+  color: var(--zk-bg);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-success:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+}
+
+/* Health bar component */
+.health-bar {
+  height: 8px;
+  background: var(--zk-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.health-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.health-bar-fill.healthy {
+  background: linear-gradient(90deg, var(--zk-success), #4ADE80);
+}
+
+.health-bar-fill.warning {
+  background: linear-gradient(90deg, var(--zk-warning), #FBBF24);
+}
+
+.health-bar-fill.danger {
+  background: linear-gradient(90deg, var(--zk-danger), #F87171);
+}
+
+/* Pill button */
+.pill-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--zk-border);
+  background: transparent;
+  color: var(--zk-text-muted);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.pill-btn:hover {
+  border-color: var(--zk-teal);
+  color: var(--zk-text);
+}
+
+.pill-btn.active {
+  background: rgba(20, 184, 166, 0.15);
+  border-color: var(--zk-teal);
+  color: var(--zk-text);
+}
+
+/* Checkbox custom styling */
+.custom-checkbox {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--zk-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox:hover {
+  border-color: var(--zk-teal);
+}
+
+.custom-checkbox:checked {
+  background: var(--zk-teal);
+  border-color: var(--zk-teal);
+}
+
+.custom-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--zk-bg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  background: var(--zk-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toggle-switch.active {
+  background: var(--zk-teal);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--zk-text);
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggle-switch.active::after {
+  transform: translateX(24px);
+}
+
+/* Progress bar */
+.progress-bar {
+  height: 8px;
+  background: var(--zk-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--zk-teal), var(--zk-teal-light));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Shield animation for proof generation */
+.shield-icon {
+  animation: shield-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes shield-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 20px rgba(20, 184, 166, 0.6));
+  }
+  50% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 40px rgba(45, 212, 191, 0.8));
+  }
+}
+
+/* Tab navigation */
+.tab-btn {
+  padding: 12px 24px;
+  color: var(--zk-text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--zk-text);
+}
+
+.tab-btn.active {
+  color: var(--zk-text);
+  border-bottom-color: var(--zk-teal);
+}
+
+/* Note row hover */
+.note-row {
+  transition: background 0.2s ease;
+}
+
+.note-row:hover {
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.note-row.selected {
+  background: rgba(20, 184, 166, 0.15);
+  border-left: 3px solid var(--zk-teal);
+}
+
+/* Wallet adapter overrides */
+.wallet-adapter-button {
+  background: var(--zk-teal) !important;
+  color: var(--zk-bg) !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background: var(--zk-surface) !important;
+}
+
+/* ========================================
+   LANDING PAGE STYLES
+   ======================================== */
+
+/* Hero mesh gradient background */
+.hero-gradient {
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(20, 184, 166, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(20, 184, 166, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(45, 212, 191, 0.05) 0%, transparent 70%);
+}
+
+/* CTA button with glow */
+.btn-cta {
+  background: var(--zk-teal);
+  color: var(--zk-bg);
+  font-weight: 600;
+  padding: 14px 32px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(20, 184, 166, 0.2);
+}
+
+.btn-cta:hover {
+  background: var(--zk-teal-light);
+  box-shadow: 0 0 40px rgba(20, 184, 166, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Ghost/outline button */
+.btn-ghost {
+  background: transparent;
+  color: var(--zk-text);
+  font-weight: 500;
+  padding: 14px 32px;
+  border-radius: 8px;
+  border: 1px solid var(--zk-border);
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--zk-teal);
+  color: var(--zk-teal);
+}
+
+/* Landing section container */
+.landing-section {
+  padding: 80px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .landing-section {
+    padding: 120px 48px;
+  }
+}
+
+/* Landing headings */
+.landing-h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 768px) {
+  .landing-h1 {
+    font-size: 3.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-h1 {
+    font-size: 4rem;
+  }
+}
+
+.landing-h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 768px) {
+  .landing-h2 {
+    font-size: 2.5rem;
+  }
+}
+
+/* Tech chip badges */
+.tech-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: var(--zk-teal);
+  background: rgba(20, 184, 166, 0.1);
+  border: 1px solid rgba(20, 184, 166, 0.3);
+  border-radius: 100px;
+}
+
+/* Trust chip (smaller, muted) */
+.trust-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--zk-text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 100px;
+}
+
+/* Landing glass card (larger radius) */
+.landing-card {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.landing-card:hover {
+  border-color: rgba(20, 184, 166, 0.3);
+  background: rgba(17, 24, 39, 0.8);
+}
+
+/* Headline rotation animation */
+.headline-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.headline-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.5s ease;
+}
+
+.headline-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.headline-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.5s ease;
+}
+
+/* Sticky header */
+.landing-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(11, 15, 23, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.landing-header.scrolled {
+  background: rgba(11, 15, 23, 0.95);
+}
+
+/* Accordion styles */
+.accordion-item {
+  border-bottom: 1px solid var(--zk-border);
+}
+
+.accordion-trigger {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--zk-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.2s ease;
+}
+
+.accordion-trigger:hover {
+  color: var(--zk-teal);
+}
+
+.accordion-chevron {
+  transition: transform 0.3s ease;
+}
+
+.accordion-chevron.open {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+/* Step connector line */
+.step-connector {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--zk-teal), rgba(20, 184, 166, 0.3));
+}
+
+/* Scroll indicator animation */
+@keyframes bounce-down {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+.scroll-indicator {
+  animation: bounce-down 2s ease-in-out infinite;
+}
+
+/* Focus states for accessibility */
+.landing-card:focus-visible,
+.btn-cta:focus-visible,
+.btn-ghost:focus-visible,
+.accordion-trigger:focus-visible {
+  outline: 2px solid var(--zk-teal);
+  outline-offset: 2px;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}

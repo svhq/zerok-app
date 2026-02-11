@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "generatedAt": "",
+  "generator": "scripts/generate-pool-config.js",
+  "network": "localnet",
+  "rpcUrl": "http://127.0.0.1:8899",
+  "programId": "",
+  "protocolWallet": null,
+  "pools": [],
+  "poolIds": [],
+  "denominationsSol": [],
+  "protocolConstants": {
+    "numShards": 20,
+    "shardCapacity": 128,
+    "ringCapacity": 2560,
+    "stateRootHistorySize": 256,
+    "protocolFeeBps": 30
+  },
+  "configHash": ""
+}

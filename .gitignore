@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+build/
+dist/
+target/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Crypto artifacts (never commit)
+*.zkey
+*.wasm
+*.ptau
+*.r1cs
+*-keypair.json
+
+# Test data
+notes/
+test-ledger/
+logs/

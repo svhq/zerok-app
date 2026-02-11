@@ -1,0 +1,48 @@
+import { Callout } from 'nextra/components'
+
+# Getting Started
+
+Make your first private transaction on ZeroK in five steps.
+
+## Prerequisites
+
+Before you begin, you'll need:
+
+- **A Solana wallet** — [Phantom](https://phantom.app) or [Solflare](https://solflare.com) are supported
+- **Some SOL** — enough to cover your deposit plus a small transaction fee
+- **Some SOL for gas** — a standard Solana transaction fee (~0.000005 SOL)
+
+## Step 1: Connect Your Wallet
+
+Open the ZeroK app and click **Connect Wallet**. Approve the connection in your wallet extension. ZeroK will detect your wallet and display your balance.
+
+## Step 2: Select a Pool
+
+Choose a pool denomination for your deposit. ZeroK offers several fixed-size pools — pick the one that matches how much SOL you want to make private. Each pool is separate, so you can only withdraw from the same denomination you deposited into.
+
+## Step 3: Make Your Deposit
+
+Click **Deposit** and approve the transaction in your wallet. Your deposit will confirm in under a second — that's Solana's fast finality at work.
+
+## Step 4: Save Your Note
+
+After your deposit confirms, ZeroK will display your **note**. This is a cryptographic secret that proves your deposit.
+
+<Callout type="warning">
+  **This is the most important step.** Your note is the ONLY way to withdraw your funds. If you lose it, your funds are permanently gone. No one — not even ZeroK — can recover them.
+</Callout>
+
+**How to save your note:**
+- Click the **Download** button to save it as a file
+- Store it somewhere safe — an encrypted folder, a password manager, or offline storage
+- Consider making a backup copy in a second secure location
+
+## What's Next?
+
+Your deposit is now in the pool. When you're ready to withdraw:
+
+1. Wait for more deposits to enter the pool (this strengthens your privacy)
+2. Open a **different browser** or use a **fresh wallet** for the withdrawal
+3. Follow the [Withdrawals](/withdrawals) guide
+
+For more on how deposits work, see the [Deposits](/deposits) page. To understand your privacy guarantees, read the [Privacy Model](/privacy).

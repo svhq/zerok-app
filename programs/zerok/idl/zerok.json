@@ -1,0 +1,199 @@
+{
+  "address": "JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx",
+  "metadata": {
+    "name": "zerok",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Privacy-preserving protocol for Solana"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "description": "Initialize a new deposit pool with a given denomination and verifying key"
+    },
+    {
+      "name": "initialize_v2",
+      "description": "Initialize pool (v2) with denomination, max fee bps, and daily limit"
+    },
+    {
+      "name": "initialize_state_v2_clean",
+      "description": "Initialize pool state (v2 clean) with denomination and max fee bps"
+    },
+    {
+      "name": "initialize_vault_v2_clean",
+      "description": "Initialize the SOL vault PDA for a pool"
+    },
+    {
+      "name": "initialize_vk_pda_v2_clean",
+      "description": "Initialize the verifying key PDA for a pool"
+    },
+    {
+      "name": "initialize_with_vk_ref",
+      "description": "Initialize pool with a reference to an existing verifying key account"
+    },
+    {
+      "name": "deposit",
+      "description": "Deposit SOL into the privacy pool, recording a commitment on-chain"
+    },
+    {
+      "name": "deposit_v2",
+      "description": "Deposit (v2) with big-endian commitment encoding"
+    },
+    {
+      "name": "deposit_v2_clean",
+      "description": "Deposit (v2 clean) with root ring, shard support, and optional Light Protocol integration"
+    },
+    {
+      "name": "withdraw",
+      "description": "Withdraw SOL by providing a valid zero-knowledge proof"
+    },
+    {
+      "name": "withdraw_v2",
+      "description": "Withdraw (v2) with big-endian proof encoding"
+    },
+    {
+      "name": "withdraw_v2_clean",
+      "description": "Withdraw (v2 clean) with root ring validation and nullifier PDA"
+    },
+    {
+      "name": "withdraw_light",
+      "description": "Withdraw using Light Protocol compressed accounts"
+    },
+    {
+      "name": "init_vk_account",
+      "description": "Initialize a verifying key account for chunked upload"
+    },
+    {
+      "name": "append_vk_chunk",
+      "description": "Upload a chunk of verifying key data"
+    },
+    {
+      "name": "finalize_vk",
+      "description": "Finalize the verifying key after all chunks are uploaded"
+    },
+    {
+      "name": "finalize_vk_v2_clean",
+      "description": "Finalize verifying key (v2 clean)"
+    },
+    {
+      "name": "upload_vk_chunk_v2_clean",
+      "description": "Upload verifying key chunk (v2 clean) with instruction introspection"
+    },
+    {
+      "name": "bind_vk",
+      "description": "Bind a finalized verifying key to a pool"
+    },
+    {
+      "name": "init_root_ring",
+      "description": "Initialize the root ring buffer for historical root storage"
+    },
+    {
+      "name": "init_root_ring_v2_sharded",
+      "description": "Initialize sharded root ring with metadata PDA"
+    },
+    {
+      "name": "init_shard",
+      "description": "Initialize an individual root ring shard"
+    },
+    {
+      "name": "advance_active_shard",
+      "description": "Advance to the next shard when current shard is full (wrap-around)"
+    },
+    {
+      "name": "initialize_cooldown_config",
+      "description": "Initialize deposit cooldown configuration"
+    },
+    {
+      "name": "update_cooldown_config",
+      "description": "Update cooldown parameters (slots and enabled flag)"
+    },
+    {
+      "name": "set_authority",
+      "description": "Transfer pool authority to a new pubkey"
+    },
+    {
+      "name": "update_security_config",
+      "description": "Update security parameters (max fee bps, daily limits, emergency pause)"
+    },
+    {
+      "name": "pause_v2_clean",
+      "description": "Emergency pause the pool"
+    },
+    {
+      "name": "unpause_v2_clean",
+      "description": "Unpause a paused pool"
+    },
+    {
+      "name": "migrate_to_vault",
+      "description": "Migrate pool funds to a vault PDA"
+    },
+    {
+      "name": "repair_state",
+      "description": "Repair pool state (admin-only recovery)"
+    },
+    {
+      "name": "view_state",
+      "description": "Read-only view of pool state (returns StateView)"
+    },
+    {
+      "name": "get_merkle_path",
+      "description": "Retrieve the Merkle proof path for a given leaf index"
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ZerokStateV2Clean",
+      "description": "Primary pool state account containing denomination, authority, Merkle frontier, root history, and VK reference"
+    },
+    {
+      "name": "RootRingMetadata",
+      "description": "Metadata for the sharded root ring buffer (capacity, shard count, active shard index)"
+    },
+    {
+      "name": "RootRingShard",
+      "description": "Individual shard of the root ring buffer containing root entries"
+    },
+    {
+      "name": "VerifyingKeyAccount",
+      "description": "Stores the Groth16 verifying key for proof verification"
+    },
+    {
+      "name": "PoolCooldownConfig",
+      "description": "Configuration for deposit cooldown periods"
+    },
+    {
+      "name": "CommitmentRecord",
+      "description": "PDA recording an individual deposit commitment"
+    }
+  ],
+  "events": [
+    {
+      "name": "DepositEvent",
+      "description": "Emitted on successful deposit (commitment, leaf_index, timestamp)"
+    },
+    {
+      "name": "WithdrawalEvent",
+      "description": "Emitted on successful withdrawal (recipient, nullifier_hash, fee)"
+    },
+    {
+      "name": "RootRingUpdate",
+      "description": "Emitted when a new root is added to the ring buffer"
+    },
+    {
+      "name": "AuthorityChanged",
+      "description": "Emitted when pool authority is transferred"
+    },
+    {
+      "name": "SecurityConfigUpdated",
+      "description": "Emitted when security parameters are updated"
+    },
+    {
+      "name": "VkBound",
+      "description": "Emitted when a verifying key is bound to a pool"
+    },
+    {
+      "name": "VkFinalized",
+      "description": "Emitted when a verifying key upload is finalized"
+    }
+  ]
+}

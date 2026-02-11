@@ -1,0 +1,23 @@
+{
+  "name": "zerok-circuits",
+  "version": "1.0.0",
+  "description": "Zero-knowledge circuits for ZeroK Protocol on Solana",
+  "scripts": {
+    "compile": "node scripts/compile.js",
+    "setup": "node scripts/setup.js",
+    "generate-vk": "node scripts/generate_vk.js",
+    "test": "node scripts/test.js",
+    "build": "npm run compile && npm run setup && npm run generate-vk"
+  },
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "ffjavascript": "^0.2.63",
+    "snarkjs": "^0.7.5"
+  },
+  "devDependencies": {
+    "@noble/curves": "^2.0.1",
+    "chai": "^4.3.10",
+    "mocha": "^10.2.0"
+  }
+}

@@ -1,0 +1,77 @@
+import { Callout } from 'nextra/components'
+
+# FAQ
+
+Frequently asked questions about ZeroK.
+
+## What happens if I lose my note?
+
+**Your funds are permanently lost.** There is no recovery process, no support ticket, no admin override. Your note is the only proof that you made a deposit, and without it, no one can generate the withdrawal proof. Treat your note like a private key — back it up immediately and store it securely.
+
+<Callout type="warning">
+  ZeroK cannot recover lost notes. This is by design — if anyone could recover notes, it would compromise the privacy of all users.
+</Callout>
+
+## How fast are deposits and withdrawals?
+
+- **Deposits** confirm in under 1 second (Solana's fast finality)
+- **Proof generation** takes approximately 20-30 seconds in your browser
+- **Withdrawals** are processed within a few seconds after the proof is submitted
+
+## Why does ZeroK use fixed pool sizes?
+
+Fixed denominations are essential for privacy. If deposits were variable amounts, an observer could match deposits to withdrawals by amount. For example, if you deposited 1.337 SOL and someone later withdrew 1.333 SOL (minus fees), the unusual amount would make the link obvious.
+
+With fixed pools, every deposit and withdrawal in a pool is the same size, making them indistinguishable from each other.
+
+## What denominations are available?
+
+ZeroK offers several fixed-size pools. Check the app for currently available denominations. Pool sizes may be added or adjusted over time.
+
+## Is ZeroK open-source?
+
+The smart contracts and zero-knowledge circuits will be publicly available. Transparency in the core protocol code is important for trust and security.
+
+## What could leak my privacy?
+
+Even with strong cryptographic protections, certain behaviors can weaken your privacy:
+
+- **Timing correlation** — depositing and withdrawing in quick succession with few other deposits in between
+- **Recipient address reuse** — withdrawing to the same wallet multiple times links those withdrawals
+- **Small anonymity sets** — fewer deposits in a pool means fewer possibilities for an observer to consider
+- **Off-chain disclosure** — telling someone when and how much you deposited
+
+See the [Privacy Model](/privacy) page for a full breakdown and best practices.
+
+## Can I withdraw without paying gas?
+
+**Yes.** The protocol submits the withdrawal transaction and covers all network fees automatically — this is a core privacy feature. If you had to fund your recipient wallet before withdrawing, that funding transaction could link your identity. A small 0.3% protocol fee is deducted from your withdrawal amount to cover these on-chain costs.
+
+## Is ZeroK custodial?
+
+**No.** ZeroK is fully non-custodial. Your funds are held by an on-chain smart contract — not by any person, company, or server. Only someone with the correct note can generate a valid withdrawal proof. The protocol itself cannot access, freeze, or redirect your deposits. You maintain full self-custody at every step.
+
+## How does ZeroK compare to other privacy solutions?
+
+ZeroK is purpose-built for Solana with several advantages:
+
+- **Native Solana integration** — no bridges, no wrapped tokens, no cross-chain risk
+- **Groth16 proofs** — compact, fast-verifying proofs that work efficiently on Solana
+- **Fast finality** — deposits confirm in under a second, unlike multi-minute confirmations on other chains
+- **Protocol-powered withdrawals** — the protocol pays gas, removing a common privacy leak in other systems
+- **In-browser proving** — your secrets never leave your device
+
+## What wallets are supported?
+
+ZeroK currently supports:
+
+- **Phantom** — [phantom.app](https://phantom.app)
+- **Solflare** — [solflare.com](https://solflare.com)
+
+## Can I make multiple deposits?
+
+Yes. You can deposit into the same pool multiple times or into different pools. Each deposit generates a separate note that must be saved independently.
+
+## Do notes expire?
+
+Notes can become invalid if you wait too long before withdrawing. Check the app for current guidelines on note expiration and make sure to withdraw before your note expires.

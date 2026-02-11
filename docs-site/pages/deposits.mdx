@@ -1,0 +1,64 @@
+import { Callout } from 'nextra/components'
+
+# Deposits
+
+When you deposit into ZeroK, your SOL enters a shared pool. Here's everything you need to know about the process.
+
+## What Happens When You Deposit
+
+1. You select a pool denomination and approve the transaction in your wallet
+2. Your SOL is transferred into the protocol's on-chain pool
+3. A cryptographic record of your deposit is stored on-chain
+4. You receive a **note** — your proof of deposit and your key to withdraw
+
+The entire process is non-custodial — the protocol is a smart contract on Solana, and only you hold the note needed to withdraw. The transaction confirms in under a second. Your deposit is immediately part of the pool's anonymity set.
+
+## Choosing a Denomination
+
+ZeroK uses fixed-denomination pools. Every deposit in a given pool is exactly the same size, which is essential for privacy — if deposits varied in amount, they could be matched to withdrawals by size.
+
+ZeroK offers several pool sizes. Check the app for currently available denominations. You pay the denomination amount plus a standard Solana transaction fee (~0.000005 SOL).
+
+## Understanding Your Note
+
+Your note is a small piece of cryptographic data generated during deposit. It encodes the secret values that prove you made a specific deposit — without revealing which one.
+
+<Callout type="warning">
+  **Your note is your funds.** Losing your note means losing your deposit permanently. There is no recovery mechanism. Treat it like a private key.
+</Callout>
+
+### What's in a note?
+
+Your note contains cryptographic secrets that are used during withdrawal to generate a zero-knowledge proof. You don't need to understand the contents — just keep it safe.
+
+### Note backup best practices
+
+- **Download immediately** — save the note file as soon as it appears
+- **Use secure storage** — an encrypted folder, a password manager, or a hardware device
+- **Make a backup** — store a second copy in a different secure location
+- **Never share it** — anyone with your note can withdraw your funds
+- **Don't screenshot it** — screenshots may sync to cloud services or be visible to other apps
+
+<Callout type="info">
+  Think of your note like a bearer bond — whoever holds it can claim the funds. Keep it secret, keep it safe.
+</Callout>
+
+## Anonymity Set
+
+Your deposit joins the pool's **anonymity set** — the total group of unspent deposits. When someone withdraws, an observer can only tell that *one* deposit from the set was claimed, but not which one.
+
+**How the anonymity set affects your privacy:**
+
+- Immediately after depositing, the anonymity set may be small. If you're the only recent depositor, your privacy is limited.
+- As more users deposit, the set grows, and your privacy strengthens.
+- After many deposits, an observer has very little chance of linking your deposit to any specific withdrawal.
+
+**Tip:** For stronger privacy, wait until several more deposits have entered the pool before withdrawing. See the [Privacy Model](/privacy) for more guidance.
+
+## After Your Deposit
+
+Once your deposit is confirmed:
+
+1. **Save your note** — this is non-negotiable
+2. **Wait** — let more deposits accumulate in the pool
+3. **Withdraw** from a different wallet when you're ready — see [Withdrawals](/withdrawals)

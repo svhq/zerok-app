@@ -1,0 +1,24 @@
+{
+  "name": "zerok-docs",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "14.2.28",
+    "nextra": "3.3.1",
+    "nextra-theme-docs": "3.3.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.49",
+    "tailwindcss": "3.4.16",
+    "@types/node": "20.11.0",
+    "typescript": "5.7.2"
+  }
+}

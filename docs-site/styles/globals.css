@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --zk-bg: #0B0F17;
+  --zk-surface: #111827;
+  --zk-border: #243041;
+  --zk-teal: #14B8A6;
+  --zk-text: #E5E7EB;
+  --zk-text-muted: #9CA3AF;
+}
+
+/* Override Nextra dark theme to match ZeroK */
+html[class~='dark'] {
+  --shiki-color-background: #111827 !important;
+}
+
+.dark {
+  --nextra-bg: 11, 15, 23;
+  --nextra-primary-hue: 168deg;
+  --nextra-primary-saturation: 74%;
+}
+
+/* Page background */
+body {
+  background-color: var(--zk-bg) !important;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Sidebar styling */
+.nextra-sidebar-container {
+  background-color: var(--zk-surface) !important;
+  border-color: var(--zk-border) !important;
+}
+
+/* Navigation */
+nav.nextra-nav-container {
+  background-color: rgba(11, 15, 23, 0.8) !important;
+  backdrop-filter: blur(12px);
+  border-color: var(--zk-border) !important;
+}
+
+/* Code blocks */
+pre {
+  background-color: var(--zk-surface) !important;
+  border: 1px solid var(--zk-border) !important;
+  border-radius: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Callout boxes */
+.nextra-callout {
+  border-color: var(--zk-border) !important;
+  background-color: rgba(17, 24, 39, 0.5) !important;
+}
+
+/* Links */
+.dark a {
+  color: var(--zk-teal);
+}
+
+/* Cards */
+.nextra-card {
+  background-color: var(--zk-surface) !important;
+  border-color: var(--zk-border) !important;
+}
+
+.nextra-card:hover {
+  border-color: var(--zk-teal) !important;
+}
+
+/* TOC */
+.nextra-toc {
+  border-color: var(--zk-border) !important;
+}
+
+/* Footer */
+footer {
+  border-color: var(--zk-border) !important;
+}
+
+/* Custom utility classes */
+.text-zk-teal {
+  color: var(--zk-teal);
+}
+
+.bg-zk-surface {
+  background-color: var(--zk-surface);
+}
+
+.border-zk {
+  border-color: var(--zk-border);
+}

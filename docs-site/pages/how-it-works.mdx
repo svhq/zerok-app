@@ -1,0 +1,56 @@
+import { Callout } from 'nextra/components'
+
+# How It Works
+
+ZeroK uses zero-knowledge cryptography to break the on-chain link between deposits and withdrawals. Here's how.
+
+## The Three-Step Flow
+
+### 1. Deposit
+
+You deposit a fixed amount of SOL (for example, 1 SOL) into a pool. Your deposit is added to a shared pool alongside deposits from other users. At this point, you receive a **note** — a cryptographic secret that acts as your withdrawal key.
+
+### 2. Wait
+
+As more users deposit into the same pool, the **anonymity set** grows. The anonymity set is the group of deposits that your withdrawal could plausibly belong to. A larger anonymity set means stronger privacy.
+
+### 3. Withdraw
+
+When you're ready, you connect a **different wallet** and withdraw. Your browser generates a zero-knowledge proof that says: *"I deposited into this pool"* — without revealing *which* deposit is yours. The protocol's smart contract verifies your proof and releases your funds to any wallet you choose.
+
+## What Is a Zero-Knowledge Proof?
+
+A zero-knowledge proof lets you prove something is true without revealing the underlying information. In ZeroK's case:
+
+- **What you prove:** "I made a valid deposit into this pool"
+- **What stays hidden:** Which specific deposit is yours
+
+Think of it like proving you have a ticket to a concert without showing the ticket itself. The venue knows you're a valid ticket holder, but can't identify your specific ticket number.
+
+ZeroK uses **Groth16** proofs — a well-established, efficient proof system. Proofs are generated entirely in your browser in about 20-30 seconds.
+
+## The Role of Your Note
+
+When you deposit, ZeroK generates a **note** — a small piece of cryptographic data. This note is the only thing that connects you to your deposit.
+
+<Callout type="warning">
+  Your note is your withdrawal key. If you lose it, your funds are **permanently unrecoverable**. There is no reset, no support ticket, no recovery process. Save it immediately and back it up.
+</Callout>
+
+During withdrawal, your browser uses the note to construct a proof. The note itself is never sent to anyone — it stays on your device and is only used locally to generate the proof.
+
+## Anonymity Sets
+
+Privacy in ZeroK is collective. Every deposit into a pool grows the **anonymity set** — the group of deposits that any withdrawal could belong to. As long as the protocol has regular activity, an observer sees funds leaving the pool but has no way to determine which deposit is being claimed.
+
+The more people using ZeroK, the stronger everyone's privacy becomes. Your deposit strengthens other users' privacy, and their deposits strengthen yours.
+
+## Technology Under the Hood
+
+ZeroK combines several cryptographic building blocks:
+
+- **Groth16 proofs** — fast, compact zero-knowledge proofs
+- **Poseidon hashes** — a hash function designed for efficient use inside ZK circuits
+- **Merkle trees** — a data structure that efficiently tracks all deposits
+
+All proof generation happens in your browser. Your secrets never leave your device.

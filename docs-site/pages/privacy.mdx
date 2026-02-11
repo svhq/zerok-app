@@ -1,0 +1,59 @@
+import { Callout } from 'nextra/components'
+
+# Privacy Model
+
+ZeroK is a non-custodial privacy protocol — you hold the keys, you generate the proofs, and you control your funds at every step. No one, including the protocol itself, can access, freeze, or redirect your deposits. This page explains what is protected, what the limitations are, and how to maximize your privacy.
+
+## What's Protected
+
+**Deposit-withdrawal unlinkability.** This is ZeroK's core guarantee. When you withdraw, a zero-knowledge proof confirms that you made a valid deposit into the pool — without revealing which deposit is yours. On-chain, there is no connection between your deposit transaction and your withdrawal transaction.
+
+Specifically, ZeroK protects:
+
+- **Which deposit you made** — observers cannot determine which deposit corresponds to your withdrawal
+- **Your deposit wallet identity** — the withdrawal reveals nothing about the wallet that deposited
+- **Transaction amounts** — fixed denominations mean all deposits and withdrawals in a pool are identical in size
+
+## How ZK Proofs Protect You
+
+During withdrawal, your browser constructs a Groth16 zero-knowledge proof. This proof mathematically demonstrates:
+
+1. You know a secret (your note) corresponding to a valid deposit in the pool
+2. You haven't already withdrawn this deposit (no double-spending)
+
+The proof reveals **nothing else**. The on-chain verifier confirms the proof is valid and processes the withdrawal — without learning which deposit you're claiming.
+
+## How the Anonymity Set Works
+
+Every deposit into a pool grows the **anonymity set** — the group of deposits that any given withdrawal could belong to. As long as the protocol has regular activity — people depositing and withdrawing over time — it becomes practically impossible for an observer to determine which deposit corresponds to which withdrawal.
+
+When multiple users are actively using a pool, each withdrawal looks identical to every other withdrawal. An observer sees funds leaving the pool, but the cryptographic proof reveals nothing about which deposit is being claimed. With ongoing usage, the pool continuously mixes new deposits and withdrawals, making correlation extremely difficult.
+
+<Callout type="info">
+  Privacy is collective. Every deposit strengthens the privacy of all other users in the pool, and every withdrawal further obscures the link between past deposits and future withdrawals.
+</Callout>
+
+## Things to Keep in Mind
+
+### Timing
+
+If you deposit and withdraw back-to-back with little other activity in between, that pattern could be noticeable. In practice, as long as you're not the only person using the pool in that window, your transaction blends in with everyone else's.
+
+### Recipient Wallets
+
+For the strongest privacy, use a fresh wallet for each withdrawal. If you withdraw to the same address multiple times, those withdrawals become linked to each other — not to your deposit, but to each other.
+
+### Off-Chain Information
+
+ZeroK protects on-chain privacy. It cannot protect against information you share off-chain — for example, telling someone the exact time and amount of your deposit.
+
+## Best Practices
+
+- **Use a fresh wallet** for withdrawals — a new wallet with no prior transaction history
+- **Don't reuse withdrawal addresses** — each withdrawal should go to a unique address
+- **Don't share deposit details** — avoid posting timing or amount details publicly
+- **Back up your notes securely** — don't store them in plaintext on cloud-synced services
+
+<Callout type="warning">
+  Notes can expire if you wait too long before withdrawing. Check the app for current guidelines and withdraw before your note becomes invalid.
+</Callout>

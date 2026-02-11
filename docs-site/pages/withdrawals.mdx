@@ -1,0 +1,60 @@
+import { Callout } from 'nextra/components'
+
+# Withdrawals
+
+Withdrawing from ZeroK sends your funds to a wallet of your choice — with no on-chain link to your original deposit. The entire process is non-custodial: you generate the proof, you choose the recipient, and the protocol's smart contract verifies and executes the transfer.
+
+## How Withdrawal Works
+
+When you withdraw, your browser generates a zero-knowledge proof using your note. This proof says: *"I have a valid deposit in this pool"* — without revealing which deposit is yours. The protocol's on-chain smart contract verifies the proof and releases your funds to your chosen recipient wallet.
+
+No one — not the protocol, not other users, not chain observers — can determine which deposit you're withdrawing. You remain in full control throughout.
+
+## Why the Protocol Submits Your Transaction
+
+To preserve your privacy, the protocol submits the withdrawal transaction on your behalf. This is essential because if you had to pay gas from your recipient wallet, you'd need to fund it first — and that funding transaction could create a traceable link back to you.
+
+Instead, the protocol's smart contract handles the on-chain transaction costs. A small 0.3% fee is deducted from your withdrawal amount to cover these network costs and sustain the protocol's infrastructure. You never need SOL in your recipient wallet.
+
+<Callout type="info">
+  This is a privacy feature, not a custodial service. You generate the proof locally, you choose the recipient, and the smart contract executes trustlessly. The protocol never has custody of your funds — it simply verifies your proof and releases them.
+</Callout>
+
+## Step-by-Step Withdrawal
+
+### 1. Open ZeroK
+
+Open the ZeroK app and navigate to the **Withdraw** tab.
+
+### 2. Load Your Note
+
+Upload or paste the note you saved during deposit. Your browser reads the note locally — it is never sent to any server.
+
+### 3. Enter a Recipient Address
+
+Provide the Solana wallet address where you want to receive funds. For maximum privacy, use a **fresh wallet** that has no prior transaction history.
+
+<Callout type="info">
+  The recipient wallet does not need to be connected — you just need the public address. It can be completely empty.
+</Callout>
+
+### 4. Generate Proof
+
+Click **Withdraw**. Your browser will generate a zero-knowledge proof entirely on your device. This takes approximately **20-30 seconds**. Your note and secrets are never transmitted anywhere.
+
+### 5. Receive Funds
+
+Once the proof is verified on-chain, the smart contract releases your funds to your recipient wallet. The transaction is typically confirmed within a few seconds.
+
+<Callout type="warning">
+  Each note can only be used once. After a successful withdrawal, the note is spent and cannot be reused. This prevents double-spending.
+</Callout>
+
+## Privacy Tips for Withdrawals
+
+- **Use a fresh wallet** — a new wallet with no transaction history provides the strongest privacy
+- **Wait before withdrawing** — let more deposits enter the pool to increase your anonymity set
+- **Don't reuse recipient addresses** — using the same address for multiple withdrawals can link them together
+- **Avoid timing patterns** — don't withdraw immediately after depositing
+
+For a full breakdown of what protects your privacy and what doesn't, see the [Privacy Model](/privacy).
