@@ -211,7 +211,6 @@ export async function generateProof(
   );
 
   console.log('Proof generated successfully');
-  console.log('Public signals:', publicSignals);
 
   // Serialize proof for on-chain verification
   const serializedProof = serializeProof(proof as SnarkjsProof);

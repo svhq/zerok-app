@@ -29,8 +29,8 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
   const [error, setError] = useState<string | null>(null);
   const [successTxs, setSuccessTxs] = useState<string[]>([]);
 
-  // Default recipient to connected wallet
-  const effectiveRecipient = recipientAddress || publicKey?.toBase58() || '';
+  // Require explicit recipient — never default to connected wallet (privacy)
+  const effectiveRecipient = recipientAddress;
 
   const handleWithdraw = useCallback(async () => {
     // CRITICAL PRIVACY: User wallet is ONLY used for default recipient address.
@@ -227,13 +227,13 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
             <div className="flex-1">
               <input
                 type="text"
-                placeholder={publicKey?.toBase58().slice(0, 12) + '... (your wallet)'}
+                placeholder="Enter recipient address"
                 value={recipientAddress}
                 onChange={e => setRecipientAddress(e.target.value)}
                 className="w-full px-4 py-2 bg-zk-bg/50 border border-zk-teal/30 rounded-xl text-zk-text placeholder-zk-text-muted text-sm focus:outline-none focus:border-zk-teal"
               />
               <div className="text-zk-text-muted text-xs mt-1">
-                Recipient address (leave blank for your wallet)
+                Use a fresh wallet address for maximum privacy
               </div>
             </div>
 
@@ -243,7 +243,7 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
               size="md"
               onClick={handleWithdraw}
               loading={isWithdrawing}
-              disabled={isWithdrawing || selectedNotes.length === 0}
+              disabled={isWithdrawing || selectedNotes.length === 0 || !recipientAddress.trim()}
             >
               Withdraw {formatSol(selectedBalance)} SOL
             </Button>
