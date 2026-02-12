@@ -201,8 +201,7 @@ export async function generateProof(
   const wasmUrl = '/artifacts/withdraw.wasm';
   const zkeyUrl = '/artifacts/withdraw_final.zkey';
 
-  console.log('Generating ZK proof...');
-  console.log('Witness:', JSON.stringify(witness, null, 2));
+  console.log('[withdrawal] Generating ZK proof...');
 
   // Generate proof
   const { proof, publicSignals } = await snarkjs.groth16.fullProve(
