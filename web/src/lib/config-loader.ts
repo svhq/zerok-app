@@ -88,27 +88,12 @@ async function hashConfig(config: Omit<NetworkConfig, 'configHash'> | NetworkCon
   // CRITICAL: Use pretty-printed JSON to match generator
   const content = JSON.stringify(config, null, 2);
 
-  try {
-    // Use SubtleCrypto if available (modern browsers)
-    if (typeof window !== 'undefined' && window.crypto?.subtle) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(content);
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', data as unknown as ArrayBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
-    }
-  } catch {
-    // Fallback: simple string hash
-  }
-
-  // Simple hash fallback (for SSR or environments without SubtleCrypto)
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16).padStart(8, '0');
+  // Use SubtleCrypto (available in browsers and Node.js 18+)
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data as unknown as ArrayBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
 }
 
 /**
