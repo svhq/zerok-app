@@ -15,7 +15,7 @@
 
 import { Connection, Commitment } from '@solana/web3.js';
 import { getGlobalRateLimiter, getGetTransactionSemaphore } from './rpc-limiter';
-import { getRpcEndpoints, getCurrentNetwork } from './network-config';
+import { getRpcEndpoints, getCurrentNetwork, getPublicRpcEndpoint } from './network-config';
 
 // =============================================================================
 // GLOBAL ENDPOINT HEALTH TRACKING
@@ -312,19 +312,24 @@ export async function executeWithRotation<T>(
 }
 
 /**
- * Get the primary endpoint for wallet adapter ConnectionProvider
+ * Get the endpoint for wallet adapter ConnectionProvider.
  *
- * Uses first endpoint from network-config (highest priority).
- * Network is determined by hostname (single source of truth).
+ * IMPORTANT: Returns the FREE public endpoint, NOT the paid primary.
  *
- * Per consultant analysis (2026-01-05):
- * - Wallet delay is inside wallet extension (Blowfish checks, simulation, priority fee logic)
- * - Using fastest RPC everywhere minimizes overall latency
- * - ComputeBudget instructions (now added) help wallet skip "guesswork" iterations
+ * WHY: Phantom and other wallets make ~40+ background RPC calls/min per connected
+ * user (balance checks, tx history, etc.) through ConnectionProvider's endpoint.
+ * On mainnet with 100 users, that's 4,000+ req/min of wallet background noise.
+ * Using a paid endpoint here would burn credits on non-critical wallet polling.
+ *
+ * ARCHITECTURE (two-layer RPC):
+ * - ConnectionProvider (this function) → Free public endpoint (wallet background noise)
+ * - executeWithRotation() → Paid endpoints (deposit/withdrawal critical operations)
+ *
+ * Our deposit/withdrawal code uses executeWithRotation() which creates its own
+ * Connection instances with paid endpoints — it never uses ConnectionProvider.
  */
 export function getPrimaryEndpoint(): string {
-  const endpoints = getNetworkEndpoints();
-  return endpoints[0];
+  return getPublicRpcEndpoint();
 }
 
 /**
