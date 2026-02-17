@@ -79,8 +79,15 @@ export default function Trust() {
             <span className="text-zk-teal font-semibold">Open Source</span>
           </div>
           <p className="text-zk-text-muted text-sm">
-            ZeroK&apos;s circuits and frontend are open source. The protocol interface and documentation
-            are available on GitHub for independent review.
+            All smart contracts and circuits are open-source and publicly verifiable.{' '}
+            <a
+              href="https://github.com/svhq/zerok-app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zk-teal hover:underline"
+            >
+              Review the code on GitHub
+            </a>.
           </p>
         </div>
       </div>

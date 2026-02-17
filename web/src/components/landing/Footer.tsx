@@ -10,6 +10,7 @@ const footerLinks = {
   ],
   resources: [
     { label: 'Documentation', href: 'https://docs.zerok.app' },
+    { label: 'GitHub', href: 'https://github.com/svhq/zerok-app' },
     { label: 'FAQ', href: '#faq' },
   ],
   community: [

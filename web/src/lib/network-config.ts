@@ -25,6 +25,7 @@ export type NetworkId = 'devnet' | 'testnet' | 'mainnet-beta' | 'localnet';
 
 interface NetworkEndpoints {
   rpc: string[];
+  publicRpc: string;  // Free endpoint for wallet adapter (absorbs Phantom background polling)
   ws: string[];
   protocol: string;
 }
@@ -36,12 +37,16 @@ interface NetworkEndpoints {
 const NETWORK_ENDPOINTS: Record<NetworkId, NetworkEndpoints> = {
   devnet: {
     rpc: [
-      // Configure your RPC endpoints here. Recommended providers:
-      // 1. Helius (best performance)
-      // 2. Alchemy (reliable, high quota)
-      // 3. Public Solana (free, rate-limited)
+      // Paid endpoints for executeWithRotation (deposit/withdrawal operations).
+      // Add your paid RPC providers here (Helius, Alchemy, Ankr, etc.).
+      // The free public endpoint is used separately for wallet adapter polling.
       'https://api.devnet.solana.com',
     ],
+    // Free public endpoint for ConnectionProvider (wallet adapter background polling).
+    // Phantom makes ~40+ req/min per connected user for balance checks, tx history, etc.
+    // Using a free endpoint here prevents wallet background noise from burning paid credits.
+    // Our critical operations (deposit/withdraw) use executeWithRotation with paid endpoints.
+    publicRpc: 'https://api.devnet.solana.com',
     ws: ['wss://api.devnet.solana.com'],
     protocol: '', // Configure your protocol service endpoint
   },
@@ -49,16 +54,19 @@ const NETWORK_ENDPOINTS: Record<NetworkId, NetworkEndpoints> = {
     rpc: [
       'https://api.testnet.solana.com',
     ],
+    publicRpc: 'https://api.testnet.solana.com',
     ws: ['wss://api.testnet.solana.com'],
     protocol: '', // Configure your protocol service endpoint
   },
   'mainnet-beta': {
     rpc: ['https://api.mainnet-beta.solana.com'],
+    publicRpc: 'https://api.mainnet-beta.solana.com',
     ws: ['wss://api.mainnet-beta.solana.com'],
     protocol: '', // Configure your protocol service endpoint
   },
   localnet: {
     rpc: ['http://localhost:8899'],
+    publicRpc: 'http://localhost:8899',
     ws: ['ws://localhost:8900'],
     protocol: 'http://localhost:8789',
   },
@@ -137,6 +145,23 @@ export function getRpcEndpoints(): string[] {
 
   // Deduplicate while preserving order
   return [...new Set(endpoints)];
+}
+
+/**
+ * Get the free public RPC endpoint for wallet adapter ConnectionProvider.
+ *
+ * WHY: Phantom (and other wallets) make ~40+ background RPC calls per minute per
+ * connected user (getBalance, getSignaturesForAddress, etc.). These go through
+ * the ConnectionProvider endpoint. Using a paid endpoint here means every idle
+ * connected wallet burns paid RPC credits.
+ *
+ * ARCHITECTURE: Two-layer RPC strategy:
+ * - ConnectionProvider (this function): Free public endpoint → absorbs wallet background noise
+ * - executeWithRotation (getRpcEndpoints): Paid endpoints → deposit/withdrawal operations
+ */
+export function getPublicRpcEndpoint(): string {
+  const network = detectNetworkFromHostname();
+  return NETWORK_ENDPOINTS[network].publicRpc;
 }
 
 /**
