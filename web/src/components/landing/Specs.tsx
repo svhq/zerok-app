@@ -5,8 +5,8 @@ import { useState } from 'react';
 const coreSpecs = [
   { label: 'Proof System', value: 'Groth16 (BN254)', note: 'Battle-tested SNARK' },
   { label: 'Hash Function', value: 'Poseidon', note: 'ZK-optimized' },
-  { label: 'Merkle Tree Depth', value: '20 levels', note: '~1M deposits per pool' },
-  { label: 'Pool Sizes', value: '1, 10, 100 SOL', note: 'Fixed denominations' },
+  { label: 'Merkle Tree Depth', value: '20 levels', note: '~1M deposits per vault' },
+  { label: 'Vault Sizes', value: '1, 10, 100, 1000 SOL', note: 'Fixed denominations' },
 ];
 
 const performanceSpecs = [

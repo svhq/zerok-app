@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import CustomWalletButton from '@/components/CustomWalletButton';
 import DepositCard from '@/components/DepositCard';
 import StatusTab from '@/components/StatusTab';
 import RecentNotes from '@/components/RecentNotes';
@@ -120,7 +120,7 @@ export default function AppHome() {
           </nav>
 
           {/* Wallet Button */}
-          <WalletMultiButton className="!bg-zk-teal !text-zk-bg !rounded-xl !h-10 !font-medium" />
+          <CustomWalletButton />
         </div>
       </header>
 
@@ -144,7 +144,7 @@ export default function AppHome() {
               <p className="text-zk-text-muted mb-6 max-w-md">
                 Connect your Solana wallet to deposit SOL privately or withdraw from your notes.
               </p>
-              <WalletMultiButton className="!bg-zk-teal !text-zk-bg !rounded-xl !h-12 !px-8 !font-medium" />
+              <CustomWalletButton className="!h-12 !px-8" />
             </div>
           ) : (
             // Connected state - show active tab
@@ -168,7 +168,7 @@ export default function AppHome() {
 
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 right-0 py-3 text-center text-zk-text-muted text-xs">
-        <span className="opacity-60 capitalize">{networkName || 'Loading...'} • Use at your own risk</span>
+        <span className="opacity-60 capitalize">{(networkName === 'mainnet-beta' ? 'Mainnet' : networkName) || 'Loading...'} • Use at your own risk</span>
       </footer>
     </main>
   );

@@ -6,8 +6,8 @@ const steps = [
   {
     number: 1,
     title: 'Deposit',
-    shortDesc: 'Add SOL to a pool',
-    fullDesc: 'Send a fixed amount of SOL (0.1, 1, or 10) to the smart contract. Your deposit is added to a Merkle tree as a cryptographic commitment.',
+    shortDesc: 'Add SOL to a vault',
+    fullDesc: 'Send a fixed amount of SOL (1, 10, 100, or 1000) to the smart contract. Your deposit is added to a Merkle tree as a cryptographic commitment.',
     icon: 'deposit',
     techChips: ['Poseidon Hash', 'Merkle Tree'],
   },
@@ -124,7 +124,7 @@ export default function HowItWorks() {
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
         </svg>
-        <span className="text-sm">ZK Pool</span>
+        <span className="text-sm">ZK Vault</span>
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
         </svg>

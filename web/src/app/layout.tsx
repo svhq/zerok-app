@@ -4,24 +4,10 @@ import './globals.css';
 import { useMemo, useState, useEffect } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { Commitment } from '@solana/web3.js';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { PoolProvider } from '@/contexts/PoolContext';
 import { getPrimaryEndpoint } from '@/lib/resilient-connection';
 import { detectNetworkFromHostname } from '@/lib/network-config';
-
-// Import wallet adapter CSS
-import '@solana/wallet-adapter-react-ui/styles.css';
-
-// Initialize MetaMask Solana support via Wallet Standard
-// This registers MetaMask as a Wallet Standard wallet for Solana dApps
-if (typeof window !== 'undefined') {
-  import('@solflare-wallet/metamask-wallet-standard').then(({ initialize }) => {
-    initialize();
-  }).catch(() => {
-    // MetaMask adapter not available, continue without it
-  });
-}
 
 export default function RootLayout({
   children,
@@ -63,7 +49,6 @@ export default function RootLayout({
 
   // Phantom auto-registers via Wallet Standard protocol (no legacy adapter needed).
   // Solflare needs its legacy adapter (doesn't reliably register via Wallet Standard).
-  // MetaMask registers via @solflare-wallet/metamask-wallet-standard (above).
   const wallets = useMemo(() => [new SolflareWalletAdapter()], []);
 
   // Don't render ConnectionProvider until client-side endpoint is determined
@@ -109,9 +94,7 @@ export default function RootLayout({
         <PoolProvider>
           <ConnectionProvider endpoint={endpoint} config={connectionConfig}>
             <WalletProvider wallets={wallets} autoConnect={shouldAutoConnect}>
-              <WalletModalProvider>
-                {children}
-              </WalletModalProvider>
+              {children}
             </WalletProvider>
           </ConnectionProvider>
         </PoolProvider>

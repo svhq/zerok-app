@@ -12,8 +12,8 @@ const faqs = [
     answer: 'Deposits confirm in under a second (Solana finality). Withdrawals require ~20-30 seconds of local proof generation in your browser, then the on-chain verification completes in ~400ms. The proof generation time depends on your device\'s computing power.',
   },
   {
-    question: 'Why fixed pool sizes? Can\'t I deposit any amount?',
-    answer: 'Fixed denominations (0.001, 0.1, 1 SOL) maximize privacy by ensuring all deposits in a pool look identical. If you could deposit arbitrary amounts, the specific amount itself would be a fingerprint. This is a deliberate privacy-vs-flexibility tradeoff.',
+    question: 'Why fixed vault sizes? Can\'t I deposit any amount?',
+    answer: 'Fixed denominations (1, 10, 100, 1000 SOL) maximize privacy by ensuring all deposits in a vault look identical. If you could deposit arbitrary amounts, the specific amount itself would be a fingerprint. This is a deliberate privacy-vs-flexibility tradeoff.',
   },
   {
     question: 'Is ZeroK open-source?',
@@ -21,7 +21,7 @@ const faqs = [
   },
   {
     question: 'What could theoretically leak my privacy?',
-    answer: 'Timing correlation: if you deposit and withdraw too quickly, or at unusual times, an observer might correlate the transactions. Best practice: wait for other deposits to enter the pool before withdrawing. The larger the anonymity set, the stronger your privacy.',
+    answer: 'Timing correlation: if you deposit and withdraw too quickly, or at unusual times, an observer might correlate the transactions. Best practice: wait for other deposits to enter the vault before withdrawing. The larger the anonymity set, the stronger your privacy.',
   },
   {
     question: 'How does this compare to other privacy protocols?',

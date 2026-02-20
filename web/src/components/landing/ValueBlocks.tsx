@@ -14,7 +14,7 @@ const features = [
   {
     icon: 'layers',
     title: 'Fixed Denominations',
-    description: 'Fixed pool sizes (1, 10, 100 SOL, etc.) maximize privacy by ensuring all deposits look identical.',
+    description: 'Fixed vault sizes (1, 10, 100, 1000 SOL) maximize privacy by ensuring all deposits look identical.',
   },
   {
     icon: 'zap',

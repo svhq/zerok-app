@@ -83,14 +83,14 @@ export default function Hero() {
 
         {/* Subheadline */}
         <p className="text-lg sm:text-xl text-zk-text-muted max-w-2xl mx-auto mb-10">
-          Deposit into fixed pools. Withdraw later with a ZK proof.
+          Deposit into shielded vaults. Withdraw later with a ZK proof.
           <br className="hidden sm:block" />
           No direct link between sender and recipient.
         </p>
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4">
-          <a href="https://zerok.app/app" className="btn-cta text-base px-8 py-3">
+          <a href="https://app.zerok.app" className="btn-cta text-base px-8 py-3">
             Launch App
           </a>
           <button

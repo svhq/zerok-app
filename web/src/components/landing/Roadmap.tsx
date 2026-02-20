@@ -6,7 +6,7 @@ const roadmapItems = [
     status: 'active',
     title: 'Core Protocol',
     items: [
-      'Fixed-denomination pools (1, 10, 100 SOL, etc.)',
+      'Fixed-denomination vaults (1, 10, 100, 1000 SOL)',
       'Browser-based proof generation',
       'On-chain Groth16 verification',
       'Self-custodial note management',

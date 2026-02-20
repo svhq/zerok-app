@@ -58,7 +58,7 @@ export default function DepositCard({ onNotesCreated }: DepositCardProps) {
   if (!poolConfig) {
     return (
       <Card>
-        <div className="text-center text-gray-400">Select a pool to deposit</div>
+        <div className="text-center text-gray-400">Select a vault to deposit</div>
       </Card>
     );
   }
@@ -550,7 +550,7 @@ export default function DepositCard({ onNotesCreated }: DepositCardProps) {
           <div className="text-center mb-6">
             <h2 className="text-2xl font-semibold text-zk-text mb-2">Private Deposit</h2>
             <p className="text-zk-text-muted text-sm">
-              Deposit SOL privately into the anonymity pool
+              Deposit SOL privately into the shielded vault
             </p>
           </div>
 
@@ -566,9 +566,9 @@ export default function DepositCard({ onNotesCreated }: DepositCardProps) {
             </div>
           </div>
 
-          {/* Pool Selector */}
+          {/* Vault Selector */}
           <div className="mb-4">
-            <label className="block text-zk-text-muted text-sm mb-2">Pool</label>
+            <label className="block text-zk-text-muted text-sm mb-2">Vault</label>
             <div className="flex gap-2 flex-wrap">
               {deployedPools.map((pool) => (
                 <button

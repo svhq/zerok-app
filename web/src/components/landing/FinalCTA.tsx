@@ -20,7 +20,7 @@ export default function FinalCTA() {
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
-            href="https://zerok.app/app"
+            href="https://app.zerok.app"
             className="btn-cta text-base px-10 py-4 text-lg"
           >
             Launch App

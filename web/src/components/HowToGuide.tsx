@@ -4,7 +4,7 @@ interface HowToGuideProps {
 
 export default function HowToGuide({ mode }: HowToGuideProps) {
   const depositSteps = [
-    { title: 'Select pool', desc: 'Select denomination' },
+    { title: 'Select vault', desc: 'Select denomination' },
     { title: 'Set quantity', desc: 'How many notes' },
     { title: 'Deposit', desc: 'Approve wallet tx' },
     { title: 'Save notes', desc: 'Auto-downloads. Allow if prompted.' },

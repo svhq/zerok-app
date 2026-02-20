@@ -1,20 +1,24 @@
 # ZeroK
 
-**Privacy-preserving protocol for Solana**
+**Privacy-preserving protocol for Solana — Live on Mainnet**
 
-`GPL-3.0` | `Solana`
+`GPL-3.0` | `Solana` | `Groth16` | `Poseidon`
 
 ---
 
 ## Overview
 
-ZeroK is a non-custodial privacy protocol built on Solana. It enables users to deposit SOL into shared pools and later withdraw to any wallet without creating a traceable link between the two transactions. Privacy is achieved through zero-knowledge proofs — the on-chain smart contract verifies that a withdrawal is legitimate without ever revealing which deposit it corresponds to.
+ZeroK is a non-custodial privacy protocol built natively on Solana. It enables users to deposit SOL into shielded vaults and later withdraw to any wallet without creating a traceable link between the two transactions. Privacy is achieved through zero-knowledge proofs — the on-chain smart contract verifies that a withdrawal is legitimate without ever revealing which deposit it corresponds to.
+
+**Mainnet Program:** `JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx`
+
+**Shielded Vaults:** 1 SOL, 10 SOL, 100 SOL, 1000 SOL
 
 ## How It Works
 
 ### 1. Deposit
 
-Connect your Solana wallet and deposit SOL into a shared pool. The protocol generates a unique cryptographic commitment for your deposit and provides you with a private note — this note is your sole proof of ownership.
+Connect your Solana wallet and deposit SOL into a shielded vault. The protocol generates a unique cryptographic commitment for your deposit and provides you with a private note — this note is your sole proof of ownership.
 
 ### 2. Wait
 
@@ -43,7 +47,6 @@ zerok-app/
 ├── programs/        — Program interface (IDL)
 ├── web/             — Frontend application (Next.js)
 ├── docs-site/       — Documentation site (Nextra)
-├── ARCHITECTURE.md  — High-level protocol architecture
 ├── SECURITY.md      — Security policy and responsible disclosure
 └── LICENSE          — GPL-3.0
 ```
@@ -73,5 +76,6 @@ ZeroK is released under the [GNU General Public License v3.0](LICENSE).
 
 ## Links
 
-- **Application** — [zerok.app](https://zerok.app)
+- **Application** — [app.zerok.app](https://app.zerok.app)
 - **Documentation** — [docs.zerok.app](https://docs.zerok.app)
+- **Twitter/X** — [@zerokprotocol](https://x.com/zerokprotocol)
