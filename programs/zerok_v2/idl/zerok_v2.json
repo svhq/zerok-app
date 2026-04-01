@@ -1,0 +1,1590 @@
+{
+  "address": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+  "metadata": {
+    "name": "zerok_v2",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "ZeroK v2 — JoinSplit privacy protocol for Solana"
+  },
+  "instructions": [
+    {
+      "name": "deposit_v2",
+      "docs": [
+        "Deposit arbitrary SOL into the pool.",
+        "The commitment Poseidon(amount, nullifier, secret) is added as a new Merkle leaf.",
+        "Client must compute the commitment off-chain before calling this instruction.",
+        "",
+        "# Arguments",
+        "* `commitment` — Poseidon(3)(amount, nullifier, secret), BE-encoded field element",
+        "* `amount`     — Lamports to deposit (must equal tx SOL transfer)",
+        "* `memo_blob`  — AES-256-GCM encrypted note (zerok:v2: prefix), stored in tx memo"
+      ],
+      "discriminator": [
+        109,
+        75,
+        69,
+        153,
+        172,
+        218,
+        146,
+        19
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "_memo_blob",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "finalize_vk_v2",
+      "docs": [
+        "Finalize the VK — compute SHA-256 hash, mark pool ready for withdrawals.",
+        "The `expected_hash` parameter verifies integrity of the uploaded VK."
+      ],
+      "discriminator": [
+        179,
+        168,
+        54,
+        255,
+        119,
+        135,
+        201,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "vk_account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "expected_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "grow_pool_state_v2",
+      "docs": [
+        "Grow the pool state account to full size (for ROOT_HISTORY_SIZE = 4096).",
+        "The init instruction creates the account at 10KB (max CPI allows).",
+        "This instruction grows it by up to 10KB per call. Call repeatedly until full.",
+        "Idempotent: returns Ok if already at target size."
+      ],
+      "discriminator": [
+        59,
+        245,
+        119,
+        64,
+        79,
+        72,
+        22,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "We use UncheckedAccount because the account may be smaller than",
+            "the full ZerokV2PoolState struct during the grow process."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "denomination"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_denomination",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_pool_v2",
+      "docs": [
+        "Initialize a new v2 pool with an empty incremental Merkle tree.",
+        "Creates the pool state PDA and a separate VK account PDA.",
+        "The VK must be uploaded via upload_vk_chunk_v2 + finalize_vk_v2 before use."
+      ],
+      "discriminator": [
+        207,
+        45,
+        87,
+        242,
+        27,
+        63,
+        204,
+        67
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "Pool state — initialized at 10KB (max CPI), grown to 132KB via grow_pool_state_v2.",
+            "Uses UncheckedAccount because AccountLoader requires full struct size."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "denomination"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Initialized as a system account; SOL is transferred here on deposit."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_wallet"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "denomination",
+          "type": "u64"
+        },
+        {
+          "name": "max_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "re_denominate_v2",
+      "docs": [
+        "Private cross-pool re-denomination: break one note into 10 smaller notes.",
+        "Example: 1×10 SOL (in 10-SOL pool) → 10×1 SOL (in 1-SOL pool)",
+        "No SOL leaves the system — value moves vault-to-vault atomically."
+      ],
+      "discriminator": [
+        253,
+        203,
+        245,
+        215,
+        80,
+        245,
+        153,
+        52
+      ],
+      "accounts": [
+        {
+          "name": "source_pool_state",
+          "docs": [
+            "Source pool state (denomination being consumed)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "source_vault",
+          "docs": [
+            "Source pool vault (SOL transferred out)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "source_pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "target_pool_state",
+          "docs": [
+            "Target pool state (denomination being created)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "target_vault",
+          "docs": [
+            "Target pool vault (SOL transferred in)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "target_pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nullifier_record",
+          "docs": [
+            "Nullifier record (prevents double-spend of source note)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  117,
+                  108,
+                  108,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "source_nullifier_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "redenom_vk_account",
+          "docs": [
+            "Re-denomination VK (different from withdrawal VK — 12 public inputs)"
+          ]
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": "bytes"
+        },
+        {
+          "name": "source_nullifier_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "source_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "source_root_index_hint",
+          "type": "u32"
+        },
+        {
+          "name": "target_commitments_flat",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "set_paused_v2",
+      "docs": [
+        "Emergency pause — authority only"
+      ],
+      "discriminator": [
+        59,
+        96,
+        107,
+        21,
+        150,
+        34,
+        133,
+        86
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "upload_redenom_vk_chunk",
+      "docs": [
+        "Upload a chunk of the re-denomination VK (chunked to fit in transactions).",
+        "Call repeatedly until all 1284 bytes are uploaded."
+      ],
+      "discriminator": [
+        167,
+        97,
+        68,
+        252,
+        170,
+        144,
+        81,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "redenom_vk_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107,
+                  95,
+                  114,
+                  101,
+                  100,
+                  101,
+                  110,
+                  111,
+                  109,
+                  95,
+                  118,
+                  50
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offset",
+          "type": "u32"
+        },
+        {
+          "name": "chunk",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "upload_vk_chunk_v2",
+      "docs": [
+        "Upload a chunk of the Groth16 verifying key (chunked to fit in transactions).",
+        "Call repeatedly until all 1092 bytes are uploaded, then call finalize_vk_v2."
+      ],
+      "discriminator": [
+        80,
+        228,
+        249,
+        78,
+        26,
+        12,
+        196,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "vk_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "offset",
+          "type": "u32"
+        },
+        {
+          "name": "chunk",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_v2",
+      "docs": [
+        "JoinSplit withdrawal: spend one note, create one change note.",
+        "",
+        "Proves in zero-knowledge: inAmount = publicWithdrawalAmount + outAmount",
+        "Fee is deducted from recipient payout — vault releases exactly publicWithdrawalAmount:",
+        "recipient receives: public_withdrawal_amount - fee_amount",
+        "relayer receives:   fee_amount",
+        "vault releases:     public_withdrawal_amount (= denomination)",
+        "",
+        "This means a 3.6 SOL deposit can drain exactly: 3×1 SOL + 6×0.1 SOL, no dust.",
+        "",
+        "# Arguments",
+        "* `proof`                    — 256-byte Groth16 proof",
+        "* `nullifier_hash`           — Reveals nullifier (Poseidon(1)(inNullifier)), prevents double-spend",
+        "* `root`                     — Merkle root the input note is proven against",
+        "* `public_withdrawal_amount` — Denomination released from vault (public)",
+        "* `fee_amount`               — Protocol fee deducted from recipient payout (public)",
+        "* `out_commitment`           — Change note commitment (new Merkle leaf)",
+        "* `recipient_high/low`       — Recipient pubkey split into 16-byte halves",
+        "* `relayer_high/low`         — Relayer pubkey split (binds proof to specific relayer)",
+        "* `memo_blob`                — Encrypted change note (zerok:v2: prefix), in tx memo"
+      ],
+      "discriminator": [
+        242,
+        80,
+        163,
+        0,
+        196,
+        221,
+        194,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nullifier_record",
+          "docs": [
+            "Nullifier record PDA — `init` fails if already exists → double-spend prevention"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  117,
+                  108,
+                  108,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "nullifier_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk_account",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "writable": true
+        },
+        {
+          "name": "relayer",
+          "docs": [
+            "Relayer pays for nullifier PDA rent + transaction fees"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_wallet",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": {
+            "array": [
+              "u8",
+              256
+            ]
+          }
+        },
+        {
+          "name": "nullifier_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "root_index_hint",
+          "type": "u32"
+        },
+        {
+          "name": "public_withdrawal_amount",
+          "type": "u64"
+        },
+        {
+          "name": "fee_amount",
+          "type": "u64"
+        },
+        {
+          "name": "out_commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "recipient_high",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "recipient_low",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "relayer_high",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "relayer_low",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "_memo_blob",
+          "type": "bytes"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "NullifierRecordV2",
+      "discriminator": [
+        43,
+        200,
+        122,
+        173,
+        255,
+        108,
+        85,
+        72
+      ]
+    },
+    {
+      "name": "ZerokV2PoolState",
+      "discriminator": [
+        40,
+        110,
+        216,
+        192,
+        157,
+        120,
+        236,
+        149
+      ]
+    },
+    {
+      "name": "ZerokV2RedenomVk",
+      "discriminator": [
+        200,
+        128,
+        186,
+        90,
+        202,
+        238,
+        218,
+        84
+      ]
+    },
+    {
+      "name": "ZerokV2Vk",
+      "discriminator": [
+        246,
+        145,
+        60,
+        222,
+        95,
+        116,
+        201,
+        84
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DepositEventV2",
+      "discriminator": [
+        48,
+        63,
+        65,
+        106,
+        230,
+        129,
+        102,
+        48
+      ]
+    },
+    {
+      "name": "ReDenominateEventV2",
+      "discriminator": [
+        187,
+        126,
+        98,
+        187,
+        175,
+        231,
+        190,
+        53
+      ]
+    },
+    {
+      "name": "WithdrawEventV2",
+      "discriminator": [
+        187,
+        248,
+        12,
+        40,
+        222,
+        109,
+        37,
+        41
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "PoolPaused",
+      "msg": "Pool is paused"
+    },
+    {
+      "code": 6001,
+      "name": "PoolFull",
+      "msg": "Pool is full — maximum leaf count reached"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidProof",
+      "msg": "Proof verification failed"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidProofLength",
+      "msg": "Proof is not 256 bytes"
+    },
+    {
+      "code": 6004,
+      "name": "RootNotFound",
+      "msg": "Root not found in pool's root history"
+    },
+    {
+      "code": 6005,
+      "name": "AlreadySpent",
+      "msg": "Nullifier already spent — double-spend attempt"
+    },
+    {
+      "code": 6006,
+      "name": "FeeTooLow",
+      "msg": "Fee too low — must be max(0.3%, 0.002 SOL)"
+    },
+    {
+      "code": 6007,
+      "name": "FeeTooHigh",
+      "msg": "Fee too high — exceeds max_fee_bps"
+    },
+    {
+      "code": 6008,
+      "name": "VkNotFinalized",
+      "msg": "VK not yet finalized — upload and finalize before withdrawing"
+    },
+    {
+      "code": 6009,
+      "name": "VkAlreadyFinalized",
+      "msg": "VK already finalized — cannot re-upload"
+    },
+    {
+      "code": 6010,
+      "name": "VkHashMismatch",
+      "msg": "VK hash mismatch — integrity check failed"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidPublicInput",
+      "msg": "Public input is not a canonical BN254 field element"
+    },
+    {
+      "code": 6012,
+      "name": "AmountZero",
+      "msg": "Deposit amount must be greater than zero"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidAmount",
+      "msg": "Deposit amount must be a multiple of 0.1 SOL (100000000 lamports)"
+    },
+    {
+      "code": 6014,
+      "name": "VerifierCreationFailed",
+      "msg": "Verifier creation failed"
+    },
+    {
+      "code": 6015,
+      "name": "ChunkTooLarge",
+      "msg": "VK chunk exceeds maximum size"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidVkOffset",
+      "msg": "VK upload offset out of range"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidProtocolWallet",
+      "msg": "Protocol wallet mismatch"
+    },
+    {
+      "code": 6018,
+      "name": "MerkleInsertFailed",
+      "msg": "Merkle tree insertion failed — Poseidon hash error"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidNullifierHash",
+      "msg": "Nullifier hash is not a canonical field element"
+    },
+    {
+      "code": 6020,
+      "name": "ProofDeserializationFailed",
+      "msg": "Proof deserialization failed"
+    },
+    {
+      "code": 6021,
+      "name": "ProofVerificationFailed",
+      "msg": "Groth16 proof verification failed"
+    }
+  ],
+  "types": [
+    {
+      "name": "DepositEventV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "leaf_index",
+            "docs": [
+              "Leaf index in the Merkle tree where this commitment was inserted"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "commitment",
+            "docs": [
+              "The commitment hash = Poseidon(amount, nullifier, secret)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_root",
+            "docs": [
+              "Merkle root after insertion (needed by SDK for withdrawal proof)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "Amount deposited in lamports (helps SDK build proof without scanning events)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "siblings",
+            "docs": [
+              "Merkle path siblings (20 × 32 bytes BE) — allows instant proof generation",
+              "without any tree rebuild, relay call, or daemon dependency."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                20
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NullifierRecordV2",
+      "docs": [
+        "Nullifier record — created once per spent note, prevents double-spend",
+        "",
+        "PDA seeds: [b\"nullifier_v2\", nullifier_hash]",
+        "Existence of this account = note has been spent."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nullifier_hash",
+            "docs": [
+              "The nullifier hash (also in PDA seeds for O(1) lookup)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "out_commitment",
+            "docs": [
+              "Change note commitment produced by this withdrawal (for audit trail)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "withdrawal_amount",
+            "docs": [
+              "How many lamports were sent to recipient"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee_amount",
+            "docs": [
+              "How many lamports were sent to protocol wallet"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "spent_slot",
+            "docs": [
+              "Solana slot when this note was spent"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReDenominateEventV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "source_nullifier_hash",
+            "docs": [
+              "Source note's nullifier hash (spent)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "source_denomination",
+            "docs": [
+              "Source denomination in lamports"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "target_denomination",
+            "docs": [
+              "Target denomination in lamports"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "target_commitments",
+            "docs": [
+              "10 target commitments inserted into target pool"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                10
+              ]
+            }
+          },
+          {
+            "name": "target_leaf_indices",
+            "docs": [
+              "Leaf indices of the 10 new notes in target pool"
+            ],
+            "type": {
+              "array": [
+                "u32",
+                10
+              ]
+            }
+          },
+          {
+            "name": "new_root",
+            "docs": [
+              "Merkle root after all 10 insertions"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WithdrawEventV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nullifier_hash",
+            "docs": [
+              "Nullifier hash — publicly spent, recorded for indexers"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "out_commitment",
+            "docs": [
+              "Change note commitment — new leaf inserted into tree"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leaf_index",
+            "docs": [
+              "Leaf index of the change note"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "withdrawal_amount",
+            "docs": [
+              "Lamports sent to recipient"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "fee_amount",
+            "docs": [
+              "Lamports sent to protocol wallet"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "new_root",
+            "docs": [
+              "Merkle root after change note insertion"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "siblings",
+            "docs": [
+              "Merkle path siblings for the change note (20 × 32 bytes BE)"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                20
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZerokV2PoolState",
+      "docs": [
+        "Pool state — tracks the incremental Merkle tree and configuration",
+        "",
+        "Uses zero_copy to avoid stack overflow on large account data.",
+        "The Merkle frontier + root history fit in a single ~9KB account.",
+        "",
+        "No Light Protocol — v2 uses a custom on-chain incremental Merkle tree.",
+        "Each deposit AND each withdrawal (change note) adds one leaf to the tree."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "paused",
+            "type": "u8"
+          },
+          {
+            "name": "vk_finalized",
+            "type": "u8"
+          },
+          {
+            "name": "_pad0",
+            "type": {
+              "array": [
+                "u8",
+                5
+              ]
+            }
+          },
+          {
+            "name": "denomination",
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "vk_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "vk_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vk_uploaded_bytes",
+            "type": "u32"
+          },
+          {
+            "name": "_pad1",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "max_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "_pad2",
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "leaf_count",
+            "type": "u32"
+          },
+          {
+            "name": "root_index",
+            "type": "u32"
+          },
+          {
+            "name": "merkle_frontier",
+            "docs": [
+              "Merkle frontier — the rightmost filled subtree at each level",
+              "Supports O(log n) leaf insertion via the incremental Merkle tree algorithm.",
+              "frontier[i] = hash of the last filled subtree at depth i from leaves"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                20
+              ]
+            }
+          },
+          {
+            "name": "current_root",
+            "docs": [
+              "Current Merkle root (most recent)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "root_history",
+            "docs": [
+              "Rolling history of the last 4096 roots (circular buffer)",
+              "A withdrawal proof is valid if its root appears here.",
+              "At 50 ops/day ≈ 82 day window. At 200 ops/day ≈ 20 day window."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                4096
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZerokV2RedenomVk",
+      "docs": [
+        "Re-denomination VK account — holds the Groth16 verifying key for the re-denomination circuit",
+        "",
+        "PDA seeds: [b\"vk_redenom_v2\"]",
+        "One global VK — the same circuit works for all denomination ratios (10:1).",
+        "Account size: 8 (discriminator) + 1284 (VK) = 1292 bytes"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bytes",
+            "docs": [
+              "Raw VK bytes for the 12-input re-denomination circuit",
+              "Layout: nr_pubinputs(4) + alpha_g1(64) + beta_g2(128) + gamma_g2(128) + delta_g2(128) + IC[13×64]"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                1284
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZerokV2Vk",
+      "docs": [
+        "VK account — raw account holding the Groth16 verifying key bytes",
+        "",
+        "PDA seeds: [b\"vk_v2\", pool_state.key()]",
+        "Account size: 8 (discriminator) + 1092 (VK) = 1100 bytes",
+        "The VK is uploaded in chunks via upload_vk_chunk_v2, then finalized.",
+        "After finalization, the pool state's vk_hash is set for integrity.",
+        "",
+        "Fixed-size array: borsh serializes [u8; N] without a length prefix,",
+        "so the on-disk size is exactly 8 + 1092 = 1100 bytes."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bytes",
+            "docs": [
+              "Raw VK bytes for the 9-input JoinSplit circuit",
+              "Layout: nr_pubinputs(4) + alpha_g1(64) + beta_g2(128) + gamma_g2(128) + delta_g2(128) + IC[10×64]"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                1092
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
