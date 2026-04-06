@@ -9,6 +9,7 @@ const navLinks = [
   { href: '#features', label: 'Features' },
   { href: '#specs', label: 'Specs' },
   { href: '#faq', label: 'FAQ' },
+  { href: 'https://docs.zerok.app/agents', label: 'For Agents' },
   { href: 'https://docs.zerok.app', label: 'Docs' },
 ];
 

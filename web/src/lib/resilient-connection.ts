@@ -4,7 +4,7 @@
  * Ported from CLI: /zerok/cli/utils/resilient-rpc.js
  *
  * Features:
- * - Same endpoint priority (Helius -> Solana -> Ankr)
+ * - Same endpoint priority (Solana -> Helius -> Alchemy -> Ankr)
  * - Retry with exponential backoff + jitter on 429s
  * - Automatic endpoint rotation on failures
  * - Global endpoint health tracking with cooldown (429 penalty box)
@@ -30,7 +30,7 @@ interface EndpointHealth {
 }
 
 const endpointHealth: Map<string, EndpointHealth> = new Map();
-const COOLDOWN_MS = 2_000;  // 2 second cooldown after 429 (reduced for single-endpoint networks)
+const COOLDOWN_MS = 15_000;  // 15 second cooldown after 429 (prevents retry loops on rate-limited endpoints)
 
 /**
  * Check if an endpoint is available (not in cooldown)
@@ -337,4 +337,25 @@ export function getPrimaryEndpoint(): string {
  */
 export function getEndpoints(): readonly string[] {
   return getNetworkEndpoints();
+}
+
+/**
+ * Get the best endpoint for bulk read-only operations (note scanning).
+ *
+ * WHY: The global rate limiter (2 req/sec) was calibrated for deposit/withdrawal safety.
+ * Note scanning is read-only and non-critical — using a direct connection at the
+ * paid endpoint's native rate limit (10-25 req/sec) is safe and much faster.
+ *
+ * Prefers paid endpoints (Helius, Alchemy) over free public Solana endpoints because:
+ * - Paid endpoints populate sig.memo → enables memo prefilter (avoids fetching every tx)
+ * - Free public endpoint rate-limits aggressively and never populates sig.memo
+ */
+export function getScanEndpoint(): string {
+  const endpoints = getNetworkEndpoints();
+  // Prefer Alchemy: best rate limits for parallel reads (25+ req/sec vs Helius free ~5 req/sec)
+  const alchemy = endpoints.find(e => e.includes('alchemy'));
+  if (alchemy) return alchemy;
+  // Fall back to any paid endpoint (skip free public Solana — low limits, no sig.memo)
+  const FREE_PATTERNS = ['api.devnet.solana.com', 'api.testnet.solana.com', 'api.mainnet-beta.solana.com'];
+  return endpoints.find(e => !FREE_PATTERNS.some(p => e.includes(p))) ?? endpoints[0];
 }

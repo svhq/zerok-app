@@ -55,6 +55,17 @@ Poseidon is an arithmetic-friendly hash function specifically designed for use i
 
 Deposits are tracked using a Merkle tree, where each leaf is a commitment. This structure allows the prover to demonstrate membership (that their commitment exists in the tree) by providing a Merkle path — a logarithmic-size witness — without revealing which leaf is theirs.
 
+## Sharded Root Ring (V3)
+
+V3 introduces a sharded root ring architecture for scalable root history management:
+
+- **20 shards**, each holding 128 root entries = **2,560 total root history**
+- Roots rotate through shards in order, providing a large withdrawal window
+- Each shard is a separate on-chain account, enabling parallel access
+- Commitments use `Poseidon(2)(nullifier, secret)` — fixed-denomination, simple and auditable
+
+This design replaces the flat root history of earlier versions, providing better scalability while maintaining the same privacy guarantees.
+
 ## Protocol-Powered Withdrawals
 
 ZeroK uses a protocol-powered withdrawal mechanism to preserve recipient privacy. Here is how it works:

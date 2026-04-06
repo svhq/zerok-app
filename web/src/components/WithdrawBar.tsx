@@ -6,8 +6,8 @@ import { PublicKey } from '@solana/web3.js';
 import { Button } from './ui';
 import { Note } from '@/types/note';
 import { formatSol } from '@/lib/pool-config';
-import { prepareWithdrawalForProtocol, ProtocolSubmissionData } from '@/lib/withdrawal';
-import { submitWithdrawalToProtocol, checkProtocolHealth } from '@/lib/protocol-client';
+import { prepareWithdrawalForRelay, RelayerSubmissionData } from '@/lib/withdrawal';
+import { submitWithdrawalToRelay, checkRelayerHealth } from '@/lib/relayer-client';
 import ProofOverlay from './ProofOverlay';
 
 interface WithdrawBarProps {
@@ -34,7 +34,7 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
 
   const handleWithdraw = useCallback(async () => {
     // CRITICAL PRIVACY: User wallet is ONLY used for default recipient address.
-    // All withdrawals are signed and submitted by the PROTOCOL SERVICE, not the user.
+    // All withdrawals are signed and submitted by the RELAYER, not the user.
     // This preserves anonymity by not linking the user's wallet to the withdrawal.
 
     // Validate recipient address
@@ -65,45 +65,47 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
 
     try {
       // ═══════════════════════════════════════════════════════════════════════
-      // PROTOCOL-ONLY WITHDRAWAL FLOW (Privacy-Preserving)
+      // RELAYER-ONLY WITHDRAWAL FLOW (Privacy-Preserving)
       //
-      // Phase 1: Check protocol health and get protocol address
+      // Phase 1: Check relayer health and get relayer address
       // Phase 2: Generate proofs and prepare instructions (no signing!)
-      // Phase 3: Submit each to protocol (protocol signs and submits)
+      // Phase 3: Submit each to relayer (relayer signs and submits)
       //
-      // CRITICAL: User wallet NEVER signs. Protocol handles everything.
+      // CRITICAL: User wallet NEVER signs. Relayer handles everything.
       // ═══════════════════════════════════════════════════════════════════════
 
       const DELAY_BETWEEN_PROOFS = 1500; // 1.5 seconds between proof generations
-      const DELAY_BETWEEN_SUBMISSIONS = 1000; // 1 second between protocol submissions
+      const DELAY_BETWEEN_SUBMISSIONS = 1000; // 1 second between relay submissions
 
       // ═══════════════════════════════════════════════════════════════════════
-      // PHASE 1: Check protocol health and get protocol address
+      // PHASE 1: Check relayer health and get relayer address
+      // Per anti-drift architecture: relayer pubkey source of truth is
+      // Railway deployment wallet, NOT config YAML
       // ═══════════════════════════════════════════════════════════════════════
       setProofProgress('Connecting...');
-      let protocol: PublicKey;
+      let relayer: PublicKey;
       try {
-        const health = await checkProtocolHealth();
-        console.log('[Phase 1] Protocol health:', health);
+        const health = await checkRelayerHealth();
+        console.log('[Phase 1] Relayer health:', health);
         if (health.status !== 'ok') {
           throw new Error('Service is not available');
         }
-        // Get protocol address from the protocol service (source of truth)
-        protocol = new PublicKey(health.protocol);
-        console.log(`[Phase 1] Protocol address from service: ${protocol.toBase58()}`);
+        // Get relayer address from the relay service (source of truth)
+        relayer = new PublicKey(health.relayer);
+        console.log(`[Phase 1] Relayer address from service: ${relayer.toBase58()}`);
       } catch (healthErr) {
-        console.error('[Phase 1] Protocol health check failed:', healthErr);
+        console.error('[Phase 1] Relayer health check failed:', healthErr);
         throw new Error('Cannot reach service. Please try again later.');
       }
 
-      console.log(`\n=== Starting ${selectedNotes.length} protocol-only withdrawal(s) ===`);
-      console.log(`Protocol: ${protocol.toBase58()}`);
+      console.log(`\n=== Starting ${selectedNotes.length} relayer-only withdrawal(s) ===`);
+      console.log(`Relayer: ${relayer.toBase58()}`);
 
 
       // ═══════════════════════════════════════════════════════════════════════
       // PHASE 2: Generate proofs and build instructions
       // ═══════════════════════════════════════════════════════════════════════
-      const preparedSubmissions: ProtocolSubmissionData[] = [];
+      const preparedSubmissions: RelayerSubmissionData[] = [];
 
       for (let i = 0; i < selectedNotes.length; i++) {
         const note = selectedNotes[i];
@@ -117,15 +119,15 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
         });
 
         try {
-          const submission = await prepareWithdrawalForProtocol(
+          const submission = await prepareWithdrawalForRelay(
             connection,
             note,
             recipient,
-            protocol,
+            relayer,
             (status) => setProofProgress(`Proof ${i + 1}/${selectedNotes.length}: ${status}`)
           );
           preparedSubmissions.push(submission);
-          console.log(`[Phase 2] Proof ${i + 1}/${selectedNotes.length} ready for protocol`);
+          console.log(`[Phase 2] Proof ${i + 1}/${selectedNotes.length} ready for relay`);
         } catch (proofErr) {
           console.error(`[Phase 2] Failed to generate proof ${i + 1}:`, proofErr);
           const errMsg = proofErr instanceof Error ? proofErr.message : 'Unknown error';
@@ -141,9 +143,9 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
       console.log(`[Phase 2] All ${preparedSubmissions.length} proofs ready`);
 
       // ═══════════════════════════════════════════════════════════════════════
-      // PHASE 3: Submit to protocol (protocol signs and submits on our behalf)
+      // PHASE 3: Submit to relayer (relayer signs and submits on our behalf)
       // ═══════════════════════════════════════════════════════════════════════
-      console.log('[Phase 3] Submitting to protocol...');
+      console.log('[Phase 3] Submitting to relayer...');
 
       for (let i = 0; i < preparedSubmissions.length; i++) {
         const submission = preparedSubmissions[i];
@@ -152,7 +154,7 @@ export default function WithdrawBar({ selectedNotes, selectedBalance, onClear }:
         console.log(`[Phase 3] Submitting withdrawal ${i + 1}/${preparedSubmissions.length}`);
 
         try {
-          const result = await submitWithdrawalToProtocol(
+          const result = await submitWithdrawalToRelay(
             submission.poolId,
             submission.instruction
           );

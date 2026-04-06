@@ -24,11 +24,11 @@ export default function ProofOverlay({ onCancel, status }: ProofOverlayProps) {
   useEffect(() => {
     if (status) {
       // Estimate progress based on status keywords
-      // Protocol-only flow: NO signing by user wallet
+      // Relayer-only flow: NO signing by user wallet
       if (status.includes('witness')) setProgress(20);
       else if (status.includes('proof') || status.includes('Generating')) setProgress(50);
       else if (status.includes('transaction') || status.includes('Building')) setProgress(70);
-      else if (status.includes('Submitting') || status.includes('protocol')) setProgress(80);
+      else if (status.includes('Submitting') || status.includes('relay')) setProgress(80);
       else if (status.includes('Sending')) setProgress(85);
       else if (status.includes('Confirming') || status.includes('waiting')) setProgress(90);
       else if (status.includes('complete') || status.includes('success')) setProgress(100);

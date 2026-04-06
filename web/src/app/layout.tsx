@@ -9,6 +9,7 @@ import { PoolProvider } from '@/contexts/PoolContext';
 import { getPrimaryEndpoint } from '@/lib/resilient-connection';
 import { detectNetworkFromHostname } from '@/lib/network-config';
 
+
 export default function RootLayout({
   children,
 }: {

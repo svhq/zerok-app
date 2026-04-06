@@ -49,7 +49,7 @@ export interface NetworkConfig {
   network: string;
   rpcUrl: string;
   programId: string;
-  protocolWallet: string | null;
+  relayerWallet: string | null;
   pools: GeneratedPoolConfig[];
   poolIds: string[];
   denominationsSol: number[];
@@ -245,7 +245,7 @@ export function toLegacyPoolConfig(
     denominationLamports: parseInt(pool.denominationLamports, 10),
     denominationDisplay: pool.denominationDisplay,
     rpcUrl: networkConfig.rpcUrl,
-    protocolWallet: networkConfig.protocolWallet || '',
+    relayerWallet: networkConfig.relayerWallet || '',
     ringCapacity: pool.ringCapacity,
     shardCapacity: pool.shardCapacity,
     numShards: pool.numShards,

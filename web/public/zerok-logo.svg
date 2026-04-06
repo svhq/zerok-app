@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#000000"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2DD4BF"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="35%">
+      <stop offset="0%" stop-color="#14B8A6" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#14B8A6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <rect x="1.5" y="1.5" width="509" height="509" rx="95" fill="none" stroke="#14B8A6" stroke-opacity="0.12" stroke-width="1.5"/>
+
+  <!-- Glow -->
+  <circle cx="256" cy="246" r="180" fill="url(#glow)"/>
+
+  <!-- Z letter (geometric paths, bold) -->
+  <g transform="translate(100, 150)">
+    <!-- Z: top bar -->
+    <rect x="0" y="0" width="140" height="32" rx="4" fill="#E5E7EB"/>
+    <!-- Z: diagonal -->
+    <polygon points="108,0 140,0 32,180 0,180" fill="#E5E7EB"/>
+    <!-- Z: bottom bar -->
+    <rect x="0" y="180" width="140" height="32" rx="4" fill="#E5E7EB"/>
+  </g>
+
+  <!-- K letter (teal gradient) -->
+  <g transform="translate(272, 150)">
+    <!-- K: vertical stem -->
+    <rect x="0" y="0" width="32" height="212" rx="4" fill="url(#teal)"/>
+    <!-- K: upper diagonal (arm) -->
+    <polygon points="32,106 32,72 140,0 140,46" fill="url(#teal)"/>
+    <!-- K: lower diagonal (leg) -->
+    <polygon points="32,140 32,106 140,212 140,166" fill="url(#teal)"/>
+  </g>
+
+  <!-- Accent dot -->
+  <circle cx="256" cy="400" r="5" fill="#14B8A6" opacity="0.5"/>
+</svg>

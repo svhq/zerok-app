@@ -6,11 +6,11 @@
  *
  * Layer 1: Leaky bucket rate limiter (QPS control)
  * - Prevents bursts exceeding RPC provider quotas
- * - Default: 2 requests/second (matches Helius free tier limits)
+ * - Default: 8 requests/second (paid Helius tier)
  *
  * Layer 2: Semaphore (concurrency control)
  * - Prevents too many simultaneous in-flight calls
- * - Default: 3 concurrent max
+ * - Default: 6 concurrent max
  *
  * Together, these make 429 errors mathematically impossible under normal load.
  */
@@ -112,13 +112,13 @@ let getTransactionSemaphore: Semaphore | null = null;
 /**
  * Get the global rate limiter instance
  *
- * Settings: 2 tokens max, 2/sec refill rate
- * This means: burst of 2, then sustained 2 req/sec
+ * Settings: 8 tokens max, 8/sec refill rate
+ * This means: burst of 8, then sustained 8 req/sec (paid Helius tier)
  */
 export function getGlobalRateLimiter(): LeakyBucketRateLimiter {
   if (!globalRateLimiter) {
-    globalRateLimiter = new LeakyBucketRateLimiter(2, 2);
-    console.log('[RateLimiter] Initialized: 2 tokens, 2/sec refill');
+    globalRateLimiter = new LeakyBucketRateLimiter(8, 8);
+    console.log('[RateLimiter] Initialized: 8 tokens, 8/sec refill');
   }
   return globalRateLimiter;
 }
@@ -126,13 +126,13 @@ export function getGlobalRateLimiter(): LeakyBucketRateLimiter {
 /**
  * Get the semaphore for getTransaction concurrency limiting
  *
- * Settings: 3 concurrent max
+ * Settings: 6 concurrent max
  * This prevents too many in-flight requests even if rate limiter allows burst
  */
 export function getGetTransactionSemaphore(): Semaphore {
   if (!getTransactionSemaphore) {
-    getTransactionSemaphore = new Semaphore(3);
-    console.log('[Semaphore] Initialized: 3 permits');
+    getTransactionSemaphore = new Semaphore(6);
+    console.log('[Semaphore] Initialized: 6 permits');
   }
   return getTransactionSemaphore;
 }

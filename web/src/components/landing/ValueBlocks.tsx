@@ -24,7 +24,7 @@ const features = [
   {
     icon: 'lock',
     title: 'Verifiable Security',
-    description: 'Open-source circuits. On-chain proof verification. Cryptographically verifiable at every step.',
+    description: 'Open-source contracts. On-chain proof verification. No trusted setup ceremonies — you verify everything.',
   },
 ];
 

@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Disable StrictMode to prevent double-mounting that confuses wallet adapter
@@ -10,7 +12,7 @@ const nextConfig = {
   },
 
   // Transpile snarkjs and its dependencies for proper bundling
-  transpilePackages: ['snarkjs', 'ffjavascript', 'circomlibjs'],
+  transpilePackages: ['snarkjs', 'ffjavascript', 'circomlibjs', 'v2-core'],
 
   webpack: (config, { isServer }) => {
     // Handle Web Workers
@@ -45,9 +47,11 @@ const nextConfig = {
     }
 
     // Ignore pino-pretty (optional logging dependency from WalletConnect)
+    // Resolve v2-core to shared SDK (outside web/ directory)
     config.resolve.alias = {
       ...config.resolve.alias,
       'pino-pretty': false,
+      'v2-core': path.resolve(__dirname, '../sdk/v2-core'),
     };
 
     return config;
@@ -66,6 +70,7 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Content-Security-Policy', value: "script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; worker-src 'self' blob:; connect-src 'self' https: wss:;" },
         ],
       },
     ];
@@ -73,3 +78,4 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+

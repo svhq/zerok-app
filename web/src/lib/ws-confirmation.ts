@@ -197,7 +197,11 @@ async function confirmViaHttpPolling(
         await new Promise(resolve => setTimeout(resolve, pollInterval * 2));
         continue;
       }
-      // Other errors - continue polling
+      // Definitive on-chain failure - stop polling immediately and propagate
+      if (pollError instanceof Error && pollError.message.startsWith('Transaction failed:')) {
+        throw pollError;
+      }
+      // Transient RPC error - log and retry
       console.warn(`[HTTP] Poll error:`, pollError);
     }
 

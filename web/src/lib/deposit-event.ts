@@ -107,6 +107,137 @@ async function randomJitter(minMs: number, maxMs: number): Promise<void> {
  * @param _connection - Unused, kept for API compatibility (uses executeWithRotation internally)
  * @param signature - Transaction signature to fetch
  */
+// ─── v2 event types ─────────────────────────────────────────────────────────
+
+export interface V2DepositEvent {
+  leafIndex: number;
+  commitment: string;   // hex, no prefix
+  newRoot: string;       // hex, no prefix
+  amount: bigint;
+  /** Merkle path siblings (20 × hex strings). Present if event includes full path data. */
+  siblings?: string[];
+}
+
+export interface V2WithdrawEvent {
+  nullifierHash: string; // hex, no prefix
+  outCommitment: string; // hex, no prefix
+  leafIndex: number;
+  withdrawalAmount: bigint;
+  feeAmount: bigint;
+  newRoot: string;       // hex, no prefix
+}
+
+// Anchor event discriminators — SHA256("event:<Name>")[0..8], computed lazily
+let _discDeposit: Uint8Array | null = null;
+let _discWithdraw: Uint8Array | null = null;
+
+async function getV2Discriminators(): Promise<{ deposit: Uint8Array; withdraw: Uint8Array }> {
+  if (!_discDeposit) {
+    const enc = new TextEncoder();
+    const dData = enc.encode('event:DepositEventV2');
+    const wData = enc.encode('event:WithdrawEventV2');
+    const [dBuf, wBuf] = await Promise.all([
+      crypto.subtle.digest('SHA-256', dData.buffer.slice(dData.byteOffset, dData.byteOffset + dData.byteLength) as ArrayBuffer),
+      crypto.subtle.digest('SHA-256', wData.buffer.slice(wData.byteOffset, wData.byteOffset + wData.byteLength) as ArrayBuffer),
+    ]);
+    _discDeposit  = new Uint8Array(dBuf).slice(0, 8);
+    _discWithdraw = new Uint8Array(wBuf).slice(0, 8);
+  }
+  return { deposit: _discDeposit, withdraw: _discWithdraw! };
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let hex = '';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return hex;
+}
+
+function readU32LE(data: Uint8Array, off: number): number {
+  return data[off] | (data[off + 1] << 8) | (data[off + 2] << 16) | (data[off + 3] << 24);
+}
+
+function readU64LE(data: Uint8Array, off: number): bigint {
+  const lo = BigInt(data[off] | (data[off + 1] << 8) | (data[off + 2] << 16) | (data[off + 3] << 24)) & 0xFFFFFFFFn;
+  const hi = BigInt(data[off + 4] | (data[off + 5] << 8) | (data[off + 6] << 16) | (data[off + 7] << 24)) & 0xFFFFFFFFn;
+  return lo | (hi << 32n);
+}
+
+function discMatch(a: Uint8Array, b: Uint8Array): boolean {
+  for (let i = 0; i < 8; i++) { if (a[i] !== b[i]) return false; }
+  return true;
+}
+
+/**
+ * Parse DepositEventV2 from v2 transaction logs.
+ * Layout: disc(8) + leaf_index(4 LE) + commitment(32 BE) + new_root(32 BE) + amount(8 LE) + siblings(20×32 BE)
+ * Total: 84 bytes (without siblings) or 724 bytes (with siblings)
+ */
+export async function parseV2DepositEventFromLogs(logs: string[]): Promise<V2DepositEvent | null> {
+  const { deposit: disc } = await getV2Discriminators();
+  for (const log of logs) {
+    if (!log.includes('Program data:')) continue;
+    const parts = log.split('Program data: ');
+    if (parts.length < 2) continue;
+    try {
+      const bin = atob(parts[1]);
+      const data = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+      if (data.length < 84) continue;
+      if (!discMatch(data.slice(0, 8), disc)) continue;
+
+      const event: V2DepositEvent = {
+        leafIndex:  readU32LE(data, 8),
+        commitment: bytesToHex(data.slice(12, 44)),
+        newRoot:    bytesToHex(data.slice(44, 76)),
+        amount:     readU64LE(data, 76),
+      };
+
+      // Extract siblings if present (20 × 32 bytes starting at offset 84)
+      if (data.length >= 724) {
+        const siblings: string[] = [];
+        for (let i = 0; i < 20; i++) {
+          const off = 84 + i * 32;
+          siblings.push(bytesToHex(data.slice(off, off + 32)));
+        }
+        event.siblings = siblings;
+      }
+
+      return event;
+    } catch { continue; }
+  }
+  return null;
+}
+
+/**
+ * Parse WithdrawEventV2 from v2 transaction logs.
+ * Layout: disc(8) + nullifier_hash(32 BE) + out_commitment(32 BE) + leaf_index(4 LE)
+ *         + withdrawal_amount(8 LE) + fee_amount(8 LE) + new_root(32 BE) = 124 bytes
+ */
+export async function parseV2WithdrawEventFromLogs(logs: string[]): Promise<V2WithdrawEvent | null> {
+  const { withdraw: disc } = await getV2Discriminators();
+  for (const log of logs) {
+    if (!log.includes('Program data:')) continue;
+    const parts = log.split('Program data: ');
+    if (parts.length < 2) continue;
+    try {
+      const bin = atob(parts[1]);
+      const data = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+      if (data.length < 124) continue;
+      if (!discMatch(data.slice(0, 8), disc)) continue;
+      return {
+        nullifierHash:    bytesToHex(data.slice(8, 40)),
+        outCommitment:    bytesToHex(data.slice(40, 72)),
+        leafIndex:        readU32LE(data, 72),
+        withdrawalAmount: readU64LE(data, 76),
+        feeAmount:        readU64LE(data, 84),
+        newRoot:          bytesToHex(data.slice(92, 124)),
+      };
+    } catch { continue; }
+  }
+  return null;
+}
+
 export async function parseDepositEvent(
   _connection: Connection,
   signature: string

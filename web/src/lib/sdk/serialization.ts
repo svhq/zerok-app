@@ -93,8 +93,8 @@ export function packPublicInputs(witness: {
   nullifierHash: string | bigint;
   recipientHigh: string | bigint;
   recipientLow: string | bigint;
-  protocolHigh: string | bigint;
-  protocolLow: string | bigint;
+  relayerHigh: string | bigint;
+  relayerLow: string | bigint;
   fee: string | bigint | number;
   refund: string | bigint | number;
 }): Uint8Array {
@@ -104,8 +104,8 @@ export function packPublicInputs(witness: {
   packed.set(toBE32(BigInt(witness.nullifierHash)), 32);
   packed.set(toBE32(BigInt(witness.recipientHigh)), 64);
   packed.set(toBE32(BigInt(witness.recipientLow)), 96);
-  packed.set(toBE32(BigInt(witness.protocolHigh)), 128);
-  packed.set(toBE32(BigInt(witness.protocolLow)), 160);
+  packed.set(toBE32(BigInt(witness.relayerHigh)), 128);
+  packed.set(toBE32(BigInt(witness.relayerLow)), 160);
   packed.set(u64ToBE32(BigInt(witness.fee)), 192);
   packed.set(u64ToBE32(BigInt(witness.refund)), 224);
 

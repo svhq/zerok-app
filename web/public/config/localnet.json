@@ -1,20 +1,92 @@
 {
   "version": 2,
-  "generatedAt": "",
-  "generator": "scripts/generate-pool-config.js",
+  "generatedAt": "2026-03-30T23:14:42.046Z",
+  "generator": "manual",
   "network": "localnet",
   "rpcUrl": "http://127.0.0.1:8899",
-  "programId": "",
-  "protocolWallet": null,
-  "pools": [],
-  "poolIds": [],
-  "denominationsSol": [],
+  "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+  "pools": [
+    {
+      "poolId": "localnet-0p1sol-v2",
+      "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+      "statePda": "6bPJtFXLis3WKHxCzLCwrhXak88FNBL73VT6VCT2gbxz",
+      "vaultPda": "GDzpHjD8kNFQVDqbjbJCXgQy2TWT12QqpWWeBCuoLWP2",
+      "vkPda": "3xrVvMrhv8yUJMsyAQCUGaw7MhDoYDBEQdaEjZtc9sXh",
+      "denominationLamports": "100000000",
+      "denominationSol": 0.1,
+      "denominationDisplay": "0.1 SOL",
+      "treeDepth": 20,
+      "network": "localnet"
+    },
+    {
+      "poolId": "localnet-1sol-v2",
+      "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+      "statePda": "HMAmyuKWLk3Xx2qgisMnx7mLFeLqhkT3e8Xc8QmJkkHZ",
+      "vaultPda": "Ej2WaK3j6TyH69rHHssPwZaQS3E3UpoWPkoggoswzoJB",
+      "vkPda": "2V5MBdQXDrMUprrXS9Whz42EQJSiZaJAGtRb5ikunBMK",
+      "denominationLamports": "1000000000",
+      "denominationSol": 1,
+      "denominationDisplay": "1 SOL",
+      "treeDepth": 20,
+      "network": "localnet"
+    },
+    {
+      "poolId": "localnet-10sol-v2",
+      "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+      "statePda": "9AnoED8vFAtF6MTu6TsqSsxKHt7egRDSCEsaqRC7tcBf",
+      "vaultPda": "HiFgKLQk6RwtdkNMdvPJUUFZaWvmzjivzYNEFXh5NLi4",
+      "vkPda": "GX5YGFLv73fqqoXWSc7A32pq94pDLuktDoa8YQgDWntH",
+      "denominationLamports": "10000000000",
+      "denominationSol": 10,
+      "denominationDisplay": "10 SOL",
+      "treeDepth": 20,
+      "network": "localnet"
+    },
+    {
+      "poolId": "localnet-100sol-v2",
+      "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+      "statePda": "JE35dCQHcqkNzoiMWYEp8q6v4263unmc5nyYhbrnD4jS",
+      "vaultPda": "GdaUFUZunyXsupX3SQoyFXcrYgPXd3mPi5gDA4958pCR",
+      "vkPda": "9bmhm9X321g5dUuftGfEaiSEvJC7ugwjmHeZZSRpLNWC",
+      "denominationLamports": "100000000000",
+      "denominationSol": 100,
+      "denominationDisplay": "100 SOL",
+      "treeDepth": 20,
+      "network": "localnet"
+    },
+    {
+      "poolId": "localnet-1000sol-v2",
+      "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+      "statePda": "8b1tdECTQQ76aroYLXGSCnjRVj1DeoQrSoX4DNhn7t4d",
+      "vaultPda": "4R61gHTnGGPP8wNBKvNZLL7vVUu5XiD2mGy4qHrTpPbv",
+      "vkPda": "EpWhrnpuLm2zybD771ibFRxq8zuktcS2yn81CCQPZF6B",
+      "denominationLamports": "1000000000000",
+      "denominationSol": 1000,
+      "denominationDisplay": "1000 SOL",
+      "treeDepth": 20,
+      "network": "localnet"
+    }
+  ],
+  "relayerWallet": "BEWNKrbVnLuWxPqVLSszwZpC6o86mC8RoSAWDaWwFivq",
+  "poolIds": [
+    "localnet-0p1sol-v2",
+    "localnet-1sol-v2",
+    "localnet-10sol-v2",
+    "localnet-100sol-v2",
+    "localnet-1000sol-v2"
+  ],
+  "denominationsSol": [
+    0.1,
+    1,
+    10,
+    100,
+    1000
+  ],
   "protocolConstants": {
-    "numShards": 20,
-    "shardCapacity": 128,
-    "ringCapacity": 2560,
-    "stateRootHistorySize": 256,
+    "numShards": 0,
+    "shardCapacity": 0,
+    "ringCapacity": 256,
+    "stateRootHistorySize": 4096,
     "protocolFeeBps": 30
-  },
-  "configHash": ""
+  }
 }

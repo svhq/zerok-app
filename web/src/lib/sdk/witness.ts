@@ -33,8 +33,8 @@ export interface WithdrawWitness {
   nullifierHash: string;
   recipientHigh: string;
   recipientLow: string;
-  protocolHigh: string;
-  protocolLow: string;
+  relayerHigh: string;
+  relayerLow: string;
   fee: string;
   refund: string;
 }
@@ -47,7 +47,7 @@ export async function buildWithdrawWitnessV2(
   note: NoteData,
   merkleTree: MerkleTree,
   recipient: PublicKey,
-  protocol: PublicKey | null,
+  relayer: PublicKey | null,
   fee: bigint | number = 0,
   refund: bigint | number = 0
 ): Promise<WithdrawWitness> {
@@ -66,10 +66,10 @@ export async function buildWithdrawWitnessV2(
   // Convert Solana PublicKeys to BE32 field elements
   const [recipientHigh, recipientLow] = addressToBE32Parts(recipient.toBytes());
 
-  let protocolHigh = 0n;
-  let protocolLow = 0n;
-  if (protocol) {
-    [protocolHigh, protocolLow] = addressToBE32Parts(protocol.toBytes());
+  let relayerHigh = 0n;
+  let relayerLow = 0n;
+  if (relayer) {
+    [relayerHigh, relayerLow] = addressToBE32Parts(relayer.toBytes());
   }
 
   // Build witness object
@@ -85,8 +85,8 @@ export async function buildWithdrawWitnessV2(
     nullifierHash: nullifierHash.toString(),
     recipientHigh: recipientHigh.toString(),
     recipientLow: recipientLow.toString(),
-    protocolHigh: protocolHigh.toString(),
-    protocolLow: protocolLow.toString(),
+    relayerHigh: relayerHigh.toString(),
+    relayerLow: relayerLow.toString(),
     fee: BigInt(fee).toString(),
     refund: BigInt(refund).toString()
   };
@@ -107,8 +107,8 @@ export function formatWitnessForSnarkjs(witness: WithdrawWitness): Record<string
     nullifierHash: witness.nullifierHash,
     recipientHigh: witness.recipientHigh,
     recipientLow: witness.recipientLow,
-    protocolHigh: witness.protocolHigh,
-    protocolLow: witness.protocolLow,
+    relayerHigh: witness.relayerHigh,
+    relayerLow: witness.relayerLow,
     fee: witness.fee,
     refund: witness.refund
   };

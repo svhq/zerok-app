@@ -11,7 +11,7 @@
  * The on-chain withdraw verifier checks roots in this order (from instructions_v2_clean.rs:1091-1209):
  *
  * Step 1: state.is_known_root(&root)
- *         └── Checks STATE_ROOT_HISTORY (256 entries in PoolStateV2Clean)
+ *         └── Checks STATE_ROOT_HISTORY (256 entries in ZeroKStateV2)
  *
  * Step 2: (devnet/mainnet) Search SHARDED_ROOT_RING
  *         └── 20 shard PDAs × 128 entries each = 2560 total capacity
@@ -30,7 +30,7 @@
  */
 
 // =============================================================================
-// STATE ACCOUNT LAYOUT (PoolStateV2Clean)
+// STATE ACCOUNT LAYOUT (ZeroKStateV2)
 // =============================================================================
 
 /** Offset to current_root in state account */

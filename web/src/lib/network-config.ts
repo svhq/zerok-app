@@ -15,7 +15,7 @@
  *
  * FORBIDDEN ENV VARS (override all networks):
  * - NEXT_PUBLIC_RPC_PRIMARY
- * - NEXT_PUBLIC_PROTOCOL_URL
+ * - NEXT_PUBLIC_RELAY_URL
  * - NEXT_PUBLIC_DAEMON_URL
  *
  * See: ZEROK_SYSTEM_REPORT.md Section 1 for details
@@ -27,7 +27,7 @@ interface NetworkEndpoints {
   rpc: string[];
   publicRpc: string;  // Free endpoint for wallet adapter (absorbs Phantom background polling)
   ws: string[];
-  protocol: string;
+  relay: string;
 }
 
 /**
@@ -37,18 +37,19 @@ interface NetworkEndpoints {
 const NETWORK_ENDPOINTS: Record<NetworkId, NetworkEndpoints> = {
   devnet: {
     rpc: [
-      // Paid endpoints for executeWithRotation (deposit/withdrawal operations).
-      // Add your paid RPC providers here (Helius, Alchemy, Ankr, etc.).
-      // The free public endpoint is used separately for wallet adapter polling.
+      // Helius paid (primary — full performance, no 429s)
+      'https://devnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY',
+      // Public Solana (fallback)
       'https://api.devnet.solana.com',
+      // Alchemy (tertiary)
+      'https://solana-devnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY',
     ],
-    // Free public endpoint for ConnectionProvider (wallet adapter background polling).
-    // Phantom makes ~40+ req/min per connected user for balance checks, tx history, etc.
-    // Using a free endpoint here prevents wallet background noise from burning paid credits.
-    // Our critical operations (deposit/withdraw) use executeWithRotation with paid endpoints.
-    publicRpc: 'https://api.devnet.solana.com',
-    ws: ['wss://api.devnet.solana.com'],
-    protocol: '', // Configure your protocol service endpoint
+    // Helius standard URL for wallet adapter — full performance (no 5 TPS rate limit).
+    // The Secure URL (subdomain-based) is rate-limited at 5 TPS which slows confirmations.
+    // On devnet, API key exposure in browser is acceptable for speed.
+    publicRpc: 'https://devnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY',
+    ws: ['wss://devnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY'],
+    relay: 'https://zerok-relay-v2-production.up.railway.app',
   },
   testnet: {
     rpc: [
@@ -56,19 +57,28 @@ const NETWORK_ENDPOINTS: Record<NetworkId, NetworkEndpoints> = {
     ],
     publicRpc: 'https://api.testnet.solana.com',
     ws: ['wss://api.testnet.solana.com'],
-    protocol: '', // Configure your protocol service endpoint
+    relay: 'https://relay-testnet.up.railway.app',
   },
   'mainnet-beta': {
-    rpc: ['https://api.mainnet-beta.solana.com'],
-    publicRpc: 'https://api.mainnet-beta.solana.com',
-    ws: ['wss://api.mainnet-beta.solana.com'],
-    protocol: '', // Configure your protocol service endpoint
+    rpc: [
+      // Helius paid primary — full performance, fast confirmations
+      'https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY',
+      // Alchemy fallback — 300M CU/month free tier, CORS-compatible
+      'https://solana-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY',
+      // Ankr tertiary — independent fallback
+      'https://rpc.ankr.com/solana/YOUR_ANKR_API_KEY',
+    ],
+    // Helius standard URL for ConnectionProvider — fast confirmations for deposits.
+    // Phantom background polling goes through this too but Helius paid tier handles it.
+    publicRpc: 'https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY',
+    ws: ['wss://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY'],
+    relay: 'https://zerok-relay-mainnet-production.up.railway.app',
   },
   localnet: {
     rpc: ['http://localhost:8899'],
     publicRpc: 'http://localhost:8899',
     ws: ['ws://localhost:8900'],
-    protocol: 'http://localhost:8789',
+    relay: 'http://localhost:8789',
   },
 };
 
@@ -92,9 +102,15 @@ export function detectNetworkFromHostname(): NetworkId {
   // Matches both subdomains (devnet.zerok.app) and Vercel previews (devnet-zerok.vercel.app)
   if (hostname.startsWith('devnet')) return 'devnet';
   if (hostname.startsWith('testnet')) return 'testnet';
-  // Landing page uses devnet until mainnet launches
+  if (hostname.startsWith('app')) return 'mainnet-beta';
+  // Landing page redirects to /landing via page.tsx; network doesn't matter but default to devnet
   if (hostname === 'zerok.app' || hostname === 'www.zerok.app') return 'devnet';
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return 'localnet';
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Allow override via env var when running locally against devnet/mainnet
+    const envOverride = process.env.NEXT_PUBLIC_NETWORK;
+    if (envOverride && isValidNetwork(envOverride)) return envOverride as NetworkId;
+    return 'localnet';
+  }
 
   // Unknown hostname - fail safe to devnet with warning
   console.warn(`[NetworkConfig] Unknown hostname: ${hostname}, defaulting to devnet`);
@@ -189,14 +205,14 @@ export function getWsEndpoints(): string[] {
 }
 
 /**
- * Get protocol service endpoint for the detected network.
+ * Get relay endpoint for the detected network.
  */
-export function getProtocolEndpoint(): string {
+export function getRelayEndpoint(): string {
   const network = detectNetworkFromHostname();
-  const endpoint = NETWORK_ENDPOINTS[network].protocol;
+  const endpoint = NETWORK_ENDPOINTS[network].relay;
 
   if (!endpoint) {
-    throw new Error(`No protocol service endpoint configured for network: ${network}`);
+    throw new Error(`No relay endpoint configured for network: ${network}`);
   }
 
   return endpoint;

@@ -1,0 +1,4123 @@
+{
+  "address": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
+  "metadata": {
+    "name": "zerok",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Privacy-preserving protocol for Solana — V3 (V1 backend + V2 UX)"
+  },
+  "instructions": [
+    {
+      "name": "advance_active_shard",
+      "docs": [
+        "Advance to next shard when current is full (wrap-around)",
+        "",
+        "Called by deposit orchestrator when shard fills up (local_head >= shard_capacity).",
+        "Uses modulo arithmetic for wrap-around: (active_shard_index + 1) % num_shards"
+      ],
+      "discriminator": [
+        36,
+        186,
+        172,
+        138,
+        99,
+        129,
+        84,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "root_ring_metadata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  116,
+                  95,
+                  114,
+                  105,
+                  110,
+                  103,
+                  95,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "current_shard",
+          "docs": [
+            "The current active shard (to verify it's full)"
+          ]
+        },
+        {
+          "name": "pool_state"
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority - anyone can call this (permissionless, validated by shard state)"
+          ],
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "append_vk_chunk",
+      "docs": [
+        "Append chunk of VK data",
+        "@param offset: Position in the VK where this chunk should be placed",
+        "@param chunk_data: The chunk bytes to append"
+      ],
+      "discriminator": [
+        12,
+        238,
+        26,
+        15,
+        28,
+        179,
+        17,
+        9
+      ],
+      "accounts": [
+        {
+          "name": "vk_account",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "vk_account"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "offset",
+          "type": "u32"
+        },
+        {
+          "name": "chunk_data",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "bind_vk",
+      "docs": [
+        "Bind VK to state (authority only)",
+        "This explicitly sets which VK account the state should use",
+        "",
+        "# First Principles",
+        "- Single source of truth for VK identity",
+        "- Authority-controlled for security",
+        "- Safe binding (empty pool or devnet)"
+      ],
+      "discriminator": [
+        63,
+        173,
+        239,
+        154,
+        240,
+        216,
+        137,
+        74
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk_account"
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_pool",
+      "docs": [
+        "Close a pool and return all rent to authority.",
+        "Requires: vault balance = 0 (all user funds withdrawn first).",
+        "Closes: state, vault, VK, ring metadata, and all shard accounts passed as remaining_accounts."
+      ],
+      "discriminator": [
+        140,
+        189,
+        209,
+        23,
+        239,
+        62,
+        239,
+        11
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "vk_pda",
+          "writable": true
+        },
+        {
+          "name": "ring_metadata",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority — receives all rent"
+          ],
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "deposit",
+      "docs": [
+        "Deposit funds into the zerok pool",
+        "@param commitment: Hash(nullifier + secret)"
+      ],
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "commitment_record",
+          "docs": [
+            "Commitment uniqueness guard - prevents duplicate commitments",
+            "Mathematical guarantee: commitment → PDA mapping is bijective"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  109,
+                  109,
+                  105,
+                  116,
+                  109,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              },
+              {
+                "kind": "arg",
+                "path": "commitment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "commitment",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit_v2",
+      "docs": [
+        "Deposit to v2 pool with BE commitment"
+      ],
+      "discriminator": [
+        109,
+        75,
+        69,
+        153,
+        172,
+        218,
+        146,
+        19
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "commitment_be",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit_v2_clean",
+      "docs": [
+        "Deposit to clean v2 pool (with optional Light Protocol integration)"
+      ],
+      "discriminator": [
+        47,
+        170,
+        203,
+        238,
+        245,
+        116,
+        129,
+        79
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "State account - PDA derived with denomination"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "cooldown_config",
+          "docs": [
+            "Pool cooldown configuration (optional - None/program ID for backward compatibility)"
+          ]
+        },
+        {
+          "name": "user_cooldown",
+          "docs": [
+            "User cooldown tracking (optional - None/program ID for backward compatibility)"
+          ]
+        },
+        {
+          "name": "root_ring",
+          "docs": [
+            "Phase R: Rolling root ring buffer (DEPRECATED - for backward compatibility only)",
+            "NOTE: This is the legacy K=128 ring. New deposits use sharded ring below."
+          ],
+          "writable": true
+        },
+        {
+          "name": "root_ring_metadata",
+          "docs": [
+            "Phase R-Sharded: Sharded root ring metadata (K=2560)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "active_shard",
+          "docs": [
+            "Active shard for writing (determined by metadata.active_shard_index)"
+          ],
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "commitment_be",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "light_enabled",
+          "type": "bool"
+        },
+        {
+          "name": "light_proof_bytes",
+          "type": "bytes"
+        },
+        {
+          "name": "output_tree_index",
+          "type": "u8"
+        },
+        {
+          "name": "light_accounts_offset",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "finalize_vk",
+      "docs": [
+        "Finalize VK and verify integrity",
+        "@param expected_sha256: Expected SHA256 hash for verification"
+      ],
+      "discriminator": [
+        65,
+        135,
+        105,
+        140,
+        64,
+        100,
+        56,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "vk_account",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "vk_account"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "expected_sha256",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "finalize_vk_v2_clean",
+      "docs": [
+        "Finalize verifying key for clean v2 (after chunks uploaded)"
+      ],
+      "discriminator": [
+        230,
+        45,
+        182,
+        37,
+        131,
+        162,
+        179,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "State account - denomination validated in handler"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vk_pda"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "get_merkle_path",
+      "docs": [
+        "Get Merkle path for a given leaf index (read-only)"
+      ],
+      "discriminator": [
+        34,
+        164,
+        203,
+        225,
+        155,
+        60,
+        235,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "State account - read-only"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "leaf_index",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "init_root_ring",
+      "docs": [
+        "Initialize RootRing for rolling on-chain Merkle roots (Phase R: K=128)"
+      ],
+      "discriminator": [
+        10,
+        207,
+        136,
+        182,
+        112,
+        28,
+        13,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "root_ring",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_root_ring_v2_sharded",
+      "docs": [
+        "Initialize sharded root ring metadata (K=4,096)"
+      ],
+      "discriminator": [
+        191,
+        65,
+        158,
+        135,
+        77,
+        229,
+        215,
+        196
+      ],
+      "accounts": [
+        {
+          "name": "root_ring_metadata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  116,
+                  95,
+                  114,
+                  105,
+                  110,
+                  103,
+                  95,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_shard",
+      "docs": [
+        "Lazy allocate a shard PDA (K=4,096 sharded ring)"
+      ],
+      "discriminator": [
+        52,
+        43,
+        132,
+        208,
+        128,
+        105,
+        135,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "root_ring_metadata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  116,
+                  95,
+                  114,
+                  105,
+                  110,
+                  103,
+                  95,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "shard",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  116,
+                  95,
+                  114,
+                  105,
+                  110,
+                  103,
+                  95,
+                  115,
+                  104,
+                  97,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              },
+              {
+                "kind": "arg",
+                "path": "shard_index"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "shard_index",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "init_vk_account",
+      "docs": [
+        "Initialize VK account for chunked upload",
+        "@param vk_sha256: SHA256 hash of the VK data (for binding verification)"
+      ],
+      "discriminator": [
+        231,
+        218,
+        114,
+        127,
+        101,
+        40,
+        164,
+        44
+      ],
+      "accounts": [
+        {
+          "name": "vk_account",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "vk_sha256",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "Initialize a new ZeroK pool with fixed denomination (LEGACY - TEST ONLY)",
+        "@param verifying_key: The Groth16 verifying key from trusted setup ceremony (for direct init)",
+        "For production, use: init_vk_account -> append_vk_chunk -> finalize_vk -> initialize_with_vk_ref"
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "denomination",
+          "type": "u64"
+        },
+        {
+          "name": "verifying_key",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "initialize_cooldown_config",
+      "docs": [
+        "Initialize cooldown configuration for a pool",
+        "Authority-only setup instruction"
+      ],
+      "discriminator": [
+        80,
+        223,
+        84,
+        254,
+        78,
+        242,
+        19,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "cooldown_config",
+          "docs": [
+            "Pool cooldown configuration account (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  111,
+                  108,
+                  100,
+                  111,
+                  119,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state",
+          "docs": [
+            "Pool state account (for PDA derivation)"
+          ]
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Pool authority"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cooldown_slots",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_state_v2_clean",
+      "docs": [
+        "Initialize state (Step 1 of 2 - split to reduce stack pressure)"
+      ],
+      "discriminator": [
+        125,
+        242,
+        154,
+        129,
+        82,
+        100,
+        57,
+        6
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "State PDA derived with denomination - ensures pool isolation"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "denomination",
+          "type": "u64"
+        },
+        {
+          "name": "max_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "initialize_v2",
+      "docs": [
+        "Initialize v2 pool with BE encoding"
+      ],
+      "discriminator": [
+        67,
+        153,
+        175,
+        39,
+        218,
+        16,
+        38,
+        32
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "denomination",
+          "type": "u64"
+        },
+        {
+          "name": "max_fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "daily_limit",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_vault_v2_clean",
+      "docs": [
+        "Initialize vault (Step 2 of 2 - split to reduce stack pressure)"
+      ],
+      "discriminator": [
+        169,
+        216,
+        213,
+        136,
+        114,
+        209,
+        42,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "denomination",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_vk_pda_v2_clean",
+      "docs": [
+        "Initialize VK PDA for clean v2 (separate from upload to avoid BPF heap limits)"
+      ],
+      "discriminator": [
+        41,
+        55,
+        106,
+        120,
+        57,
+        24,
+        122,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "State account - denomination validated in handler"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vk_pda",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_with_vk_ref",
+      "docs": [
+        "Initialize a new ZeroK pool with VK reference (PRODUCTION METHOD)",
+        "@param denomination: Fixed deposit amount for this pool",
+        "This is the only production initializer - uses VK reference for elegant architecture"
+      ],
+      "discriminator": [
+        58,
+        16,
+        179,
+        211,
+        62,
+        27,
+        84,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk_account",
+          "docs": [
+            "The finalized VK account containing the verifying key data",
+            "Validation moved to function body (AccountLoader doesn't support field access in constraints)"
+          ]
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "denomination",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "migrate_to_vault",
+      "docs": [
+        "One-time migration to move existing funds from state account to vault",
+        "This should only be called once during the upgrade from old to new architecture"
+      ],
+      "discriminator": [
+        75,
+        217,
+        254,
+        211,
+        63,
+        225,
+        43,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "pool_state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "pause_v2_clean",
+      "discriminator": [
+        254,
+        170,
+        102,
+        72,
+        146,
+        212,
+        159,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "repair_state",
+      "docs": [
+        "Repair corrupted state indices",
+        "Authority-only function to fix invariant violations"
+      ],
+      "discriminator": [
+        147,
+        16,
+        139,
+        138,
+        36,
+        38,
+        83,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority that must sign to repair state"
+          ],
+          "signer": true,
+          "relations": [
+            "pool_state"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_authority",
+      "docs": [
+        "P3.2: Set new authority (authority only, no realloc)",
+        "Transfers control to a new authority (typically multisig)"
+      ],
+      "discriminator": [
+        133,
+        250,
+        37,
+        21,
+        110,
+        163,
+        26,
+        121
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Current authority that must sign to transfer control"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "unpause_v2_clean",
+      "discriminator": [
+        91,
+        19,
+        168,
+        53,
+        126,
+        235,
+        155,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_cooldown_config",
+      "docs": [
+        "Update cooldown configuration settings",
+        "Authority-only update instruction"
+      ],
+      "discriminator": [
+        139,
+        185,
+        12,
+        126,
+        224,
+        16,
+        243,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "cooldown_config",
+          "docs": [
+            "Pool cooldown configuration account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Config authority",
+            ""
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "cooldown_slots",
+          "type": {
+            "option": "u64"
+          }
+        },
+        {
+          "name": "enabled",
+          "type": {
+            "option": "bool"
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_max_fee_bps",
+      "docs": [
+        "Update max_fee_bps for a pool (authority only)"
+      ],
+      "discriminator": [
+        190,
+        101,
+        18,
+        21,
+        46,
+        89,
+        233,
+        151
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_max_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "update_security_config",
+      "docs": [
+        "Update security parameters (authority only)",
+        "Allows pool authority to manage security settings"
+      ],
+      "discriminator": [
+        120,
+        227,
+        18,
+        73,
+        94,
+        210,
+        246,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority that can update security settings"
+          ],
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "max_relayer_fee_bps",
+          "type": {
+            "option": "u16"
+          }
+        },
+        {
+          "name": "daily_withdraw_limit",
+          "type": {
+            "option": "u64"
+          }
+        },
+        {
+          "name": "emergency_paused",
+          "type": {
+            "option": "bool"
+          }
+        }
+      ]
+    },
+    {
+      "name": "upload_vk_chunk_v2_clean",
+      "docs": [
+        "Upload VK chunk for clean v2 (chunked upload with manual zero-copy deserialization)",
+        "Parameters are manually parsed from instruction data to avoid BPF heap allocation"
+      ],
+      "discriminator": [
+        25,
+        99,
+        28,
+        247,
+        147,
+        152,
+        76,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "State account - denomination validated in handler"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vk_pda",
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instruction_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "view_state",
+      "docs": [
+        "Zero-cost view instruction for system observability",
+        "Returns critical system metrics without state modifications"
+      ],
+      "discriminator": [
+        129,
+        190,
+        138,
+        73,
+        195,
+        29,
+        197,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [],
+      "returns": {
+        "defined": {
+          "name": "StateView"
+        }
+      }
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Withdraw funds with a zero-knowledge proof"
+      ],
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  49
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "nullifier",
+          "docs": [
+            "The nullifier PDA - verified at runtime in handler to avoid offset-dependent bugs"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vk_account",
+          "docs": [
+            "The VK account containing verifying key data for proof verification",
+            "WORKAROUND: Using UncheckedAccount due to AccountLoader::load() bug",
+            "Manual validation performed in handler (owner, discriminator, deserialization)"
+          ]
+        },
+        {
+          "name": "recipient",
+          "writable": true
+        },
+        {
+          "name": "relayer",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "The account paying for nullifier PDA creation (relayer or recipient)"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": "bytes"
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nullifier_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type": "pubkey"
+        },
+        {
+          "name": "relayer",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "fee",
+          "type": "u64"
+        },
+        {
+          "name": "refund",
+          "type": "u64"
+        },
+        {
+          "name": "vk_sha256",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_light",
+      "docs": [
+        "Withdraw from Light Protocol compressed account",
+        "Phase L1.3: Light-aware withdrawal with CPI integration",
+        "",
+        "Consumes a compressed note via Light System Program and transfers funds to recipient.",
+        "Supports both full and partial withdrawals (with change).",
+        "",
+        "See WITHDRAWAL_INSTRUCTION_DESIGN.md for complete specification."
+      ],
+      "discriminator": [
+        186,
+        33,
+        45,
+        212,
+        55,
+        240,
+        183,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "docs": [
+            "Fee payer and authority for the withdrawal"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority signing the withdrawal (can be same as fee_payer)"
+          ],
+          "signer": true
+        },
+        {
+          "name": "registered_program_pda",
+          "docs": [
+            "Seeds: [b\"registered_program\", program_id]",
+            "Owner: light_registry::ID"
+          ]
+        },
+        {
+          "name": "noop_program"
+        },
+        {
+          "name": "account_compression_authority"
+        },
+        {
+          "name": "account_compression_program",
+          "docs": [
+            "Light Protocol account compression program"
+          ]
+        },
+        {
+          "name": "self_program"
+        },
+        {
+          "name": "cpi_context_account",
+          "docs": [
+            "Optional CPI context account for chaining operations",
+            "Set to None for single-operation withdrawals"
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "pool_state",
+          "docs": [
+            "Pool state PDA containing pool configuration (denomination, etc.)"
+          ]
+        },
+        {
+          "name": "recipient",
+          "docs": [
+            "NOT part of Light CPI - used post-CPI for transfer",
+            "No ownership validation needed - recipient can be any account"
+          ],
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "WithdrawLightArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_v2",
+      "docs": [
+        "Withdraw from v2 pool with BE proof"
+      ],
+      "discriminator": [
+        242,
+        80,
+        163,
+        0,
+        196,
+        221,
+        194,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  122,
+                  101,
+                  114,
+                  111,
+                  107,
+                  95,
+                  118,
+                  50
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool_state"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nullifier",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  117,
+                  108,
+                  108,
+                  105,
+                  102,
+                  105,
+                  101,
+                  114,
+                  95,
+                  118,
+                  50
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "nullifier_hash_be"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient"
+        },
+        {
+          "name": "relayer",
+          "optional": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": "bytes"
+        },
+        {
+          "name": "root_be",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nullifier_hash_be",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "recipient",
+          "type": "pubkey"
+        },
+        {
+          "name": "relayer",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "fee",
+          "type": "u64"
+        },
+        {
+          "name": "refund",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_v2_clean",
+      "docs": [
+        "Withdraw from clean v2 pool"
+      ],
+      "discriminator": [
+        211,
+        247,
+        45,
+        19,
+        75,
+        184,
+        28,
+        172
+      ],
+      "accounts": [
+        {
+          "name": "pool_state",
+          "docs": [
+            "State PDA - denomination validated in handler"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vk_pda"
+        },
+        {
+          "name": "nullifier_record",
+          "docs": [
+            "Nullifier PDA - validated manually in handler"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "recipient",
+          "writable": true
+        },
+        {
+          "name": "relayer",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Payer for nullifier PDA creation"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "root_ring",
+          "docs": [
+            "Phase R: Rolling root ring buffer (DEPRECATED - for backward compatibility only)",
+            "NOTE: This is the legacy K=128 ring. Use sharded ring (remaining_accounts) for production."
+          ]
+        },
+        {
+          "name": "root_ring_metadata",
+          "docs": [
+            "Phase R-Sharded: Sharded root ring metadata (K=2560)",
+            "Shard accounts are passed via remaining_accounts for multi-shard root search"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "nullifier_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proof",
+          "type": "bytes"
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "fee",
+          "type": "u64"
+        },
+        {
+          "name": "refund",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CommitmentRecord",
+      "discriminator": [
+        216,
+        195,
+        138,
+        99,
+        88,
+        191,
+        32,
+        246
+      ]
+    },
+    {
+      "name": "PoolCooldownConfig",
+      "discriminator": [
+        145,
+        10,
+        1,
+        236,
+        254,
+        188,
+        38,
+        44
+      ]
+    },
+    {
+      "name": "RootRing",
+      "discriminator": [
+        36,
+        194,
+        60,
+        126,
+        17,
+        216,
+        243,
+        104
+      ]
+    },
+    {
+      "name": "RootRingMetadata",
+      "discriminator": [
+        141,
+        55,
+        60,
+        224,
+        138,
+        223,
+        213,
+        181
+      ]
+    },
+    {
+      "name": "RootRingShard",
+      "discriminator": [
+        93,
+        67,
+        167,
+        217,
+        197,
+        42,
+        57,
+        186
+      ]
+    },
+    {
+      "name": "VerifyingKeyAccount",
+      "discriminator": [
+        5,
+        54,
+        231,
+        84,
+        81,
+        70,
+        17,
+        168
+      ]
+    },
+    {
+      "name": "ZerokState",
+      "discriminator": [
+        76,
+        115,
+        25,
+        61,
+        161,
+        2,
+        14,
+        248
+      ]
+    },
+    {
+      "name": "ZerokStateV2",
+      "discriminator": [
+        219,
+        204,
+        103,
+        175,
+        33,
+        35,
+        188,
+        139
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AuthorityChanged",
+      "discriminator": [
+        31,
+        19,
+        174,
+        152,
+        4,
+        82,
+        215,
+        226
+      ]
+    },
+    {
+      "name": "DepositEvent",
+      "discriminator": [
+        120,
+        248,
+        61,
+        83,
+        31,
+        142,
+        107,
+        144
+      ]
+    },
+    {
+      "name": "DepositProofData",
+      "discriminator": [
+        27,
+        123,
+        179,
+        40,
+        56,
+        68,
+        146,
+        251
+      ]
+    },
+    {
+      "name": "MigrationEvent",
+      "discriminator": [
+        255,
+        202,
+        76,
+        147,
+        91,
+        231,
+        73,
+        22
+      ]
+    },
+    {
+      "name": "RootRingUpdate",
+      "discriminator": [
+        234,
+        250,
+        14,
+        223,
+        69,
+        120,
+        140,
+        35
+      ]
+    },
+    {
+      "name": "SecurityConfigUpdated",
+      "discriminator": [
+        189,
+        149,
+        40,
+        211,
+        136,
+        220,
+        72,
+        68
+      ]
+    },
+    {
+      "name": "VkBound",
+      "discriminator": [
+        58,
+        202,
+        93,
+        151,
+        69,
+        161,
+        94,
+        55
+      ]
+    },
+    {
+      "name": "VkChunkAppended",
+      "discriminator": [
+        236,
+        169,
+        26,
+        224,
+        213,
+        25,
+        102,
+        150
+      ]
+    },
+    {
+      "name": "VkFinalized",
+      "discriminator": [
+        109,
+        156,
+        81,
+        196,
+        47,
+        81,
+        119,
+        190
+      ]
+    },
+    {
+      "name": "WithdrawalEvent",
+      "discriminator": [
+        161,
+        53,
+        185,
+        18,
+        98,
+        254,
+        54,
+        165
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "FeeExceedsDenomination",
+      "msg": "Fee exceeds transfer value"
+    },
+    {
+      "code": 6001,
+      "name": "NoteAlreadySpent",
+      "msg": "The note has been already spent"
+    },
+    {
+      "code": 6002,
+      "name": "UnknownRoot",
+      "msg": "Cannot find your merkle root"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidProof",
+      "msg": "Invalid withdraw proof"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidProofLength",
+      "msg": "Invalid proof length - must be 256 bytes"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidProofFormat",
+      "msg": "Invalid proof format"
+    },
+    {
+      "code": 6006,
+      "name": "ProofNegationFailed",
+      "msg": "Failed to negate proof A"
+    },
+    {
+      "code": 6007,
+      "name": "VerifierCreationFailed",
+      "msg": "Failed to create Groth16 verifier"
+    },
+    {
+      "code": 6008,
+      "name": "MerkleTreeFull",
+      "msg": "Merkle tree is full"
+    },
+    {
+      "code": 6009,
+      "name": "RelayerMismatch",
+      "msg": "Relayer account does not match specified relayer address"
+    },
+    {
+      "code": 6010,
+      "name": "RecipientCannotBeRelayer",
+      "msg": "Recipient cannot be the relayer"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidVerifyingKey",
+      "msg": "Invalid or corrupted verifying key data"
+    },
+    {
+      "code": 6012,
+      "name": "VaultMismatch",
+      "msg": "Vault PDA doesn't match expected derivation"
+    },
+    {
+      "code": 6013,
+      "name": "VaultNotSystemOwned",
+      "msg": "Vault account is not owned by System Program"
+    },
+    {
+      "code": 6014,
+      "name": "VaultBelowRent",
+      "msg": "Withdrawal would drop vault below rent minimum"
+    },
+    {
+      "code": 6015,
+      "name": "RelayerAccountMissing",
+      "msg": "Relayer account missing when required"
+    },
+    {
+      "code": 6016,
+      "name": "BadRecipient",
+      "msg": "Recipient account cannot be an executable program"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidVaultOwner",
+      "msg": "Vault must be owned by System Program"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidOwner",
+      "msg": "Account must be owned by System Program"
+    },
+    {
+      "code": 6019,
+      "name": "VaultNotEmpty",
+      "msg": "Vault must be empty"
+    },
+    {
+      "code": 6020,
+      "name": "VkAlreadyFinalized",
+      "msg": "VK is already finalized"
+    },
+    {
+      "code": 6021,
+      "name": "VKAlreadyInitialized",
+      "msg": "VK PDA is already initialized"
+    },
+    {
+      "code": 6022,
+      "name": "VKNotInitialized",
+      "msg": "VK PDA not initialized - call initialize_vk_pda_v2_clean first"
+    },
+    {
+      "code": 6023,
+      "name": "InvalidChunkOffset",
+      "msg": "Invalid chunk offset - must be sequential"
+    },
+    {
+      "code": 6024,
+      "name": "ChunkTooLarge",
+      "msg": "Chunk too large - maximum 900 bytes"
+    },
+    {
+      "code": 6025,
+      "name": "ExceedsExpectedSize",
+      "msg": "Chunk exceeds expected VK size"
+    },
+    {
+      "code": 6026,
+      "name": "IncompleteVk",
+      "msg": "VK is incomplete - missing data"
+    },
+    {
+      "code": 6027,
+      "name": "VkHashMismatch",
+      "msg": "VK SHA256 hash mismatch"
+    },
+    {
+      "code": 6028,
+      "name": "VkMagicMismatch",
+      "msg": "VK magic bytes mismatch - expected G16S"
+    },
+    {
+      "code": 6029,
+      "name": "VkVersionMismatch",
+      "msg": "VK version mismatch - incompatible format"
+    },
+    {
+      "code": 6030,
+      "name": "VkAccountMismatch",
+      "msg": "VK account mismatch"
+    },
+    {
+      "code": 6031,
+      "name": "InvalidVKAccount",
+      "msg": "Invalid VK account"
+    },
+    {
+      "code": 6032,
+      "name": "InvalidInstruction",
+      "msg": "Invalid instruction data format"
+    },
+    {
+      "code": 6033,
+      "name": "Unauthorized",
+      "msg": "Unauthorized: authority mismatch"
+    },
+    {
+      "code": 6034,
+      "name": "PoolNotEmpty",
+      "msg": "Pool not empty - cannot bind VK"
+    },
+    {
+      "code": 6035,
+      "name": "EmergencyPaused",
+      "msg": "Emergency pause is active - withdrawals disabled"
+    },
+    {
+      "code": 6036,
+      "name": "RelayerFeeExceedsLimit",
+      "msg": "Relayer fee exceeds maximum allowed limit"
+    },
+    {
+      "code": 6037,
+      "name": "DailyLimitExceeded",
+      "msg": "Daily withdrawal limit exceeded"
+    },
+    {
+      "code": 6038,
+      "name": "InvalidNullifierPda",
+      "msg": "Invalid nullifier PDA - does not match expected derivation"
+    },
+    {
+      "code": 6039,
+      "name": "NullifierAlreadyUsed",
+      "msg": "Nullifier has already been used - double-spend attempt"
+    },
+    {
+      "code": 6040,
+      "name": "DepositCooldownActive",
+      "msg": "Deposit cooldown active - retry after specified slots"
+    },
+    {
+      "code": 6041,
+      "name": "InvalidRootIndex",
+      "msg": "Invalid root index - exceeds history bounds"
+    },
+    {
+      "code": 6042,
+      "name": "TreeFull",
+      "msg": "Tree is full - maximum leaves reached"
+    },
+    {
+      "code": 6043,
+      "name": "RootsOverflow",
+      "msg": "Roots array overflow - exceeds maximum history"
+    },
+    {
+      "code": 6044,
+      "name": "PublicInputGreaterThanFieldSize",
+      "msg": "Public input exceeds BN254 field modulus"
+    },
+    {
+      "code": 6045,
+      "name": "FeeExceedsMax",
+      "msg": "Fee exceeds maximum allowed"
+    },
+    {
+      "code": 6046,
+      "name": "VKNotFinalized",
+      "msg": "Verifying key not finalized"
+    },
+    {
+      "code": 6047,
+      "name": "AlreadyFinalized",
+      "msg": "Verifying key already finalized"
+    },
+    {
+      "code": 6048,
+      "name": "InvalidVKLength",
+      "msg": "Invalid verifying key length"
+    },
+    {
+      "code": 6049,
+      "name": "PoseidonHashError",
+      "msg": "Poseidon hash computation failed"
+    },
+    {
+      "code": 6050,
+      "name": "Deprecated",
+      "msg": "This function is deprecated - use v2_clean variant instead"
+    },
+    {
+      "code": 6051,
+      "name": "InvalidInputsLen",
+      "msg": "Public inputs length must be a multiple of 32"
+    },
+    {
+      "code": 6052,
+      "name": "ProofVerificationFailed",
+      "msg": "Proof verification failed"
+    },
+    {
+      "code": 6053,
+      "name": "PreparingInputsG1MulFailed",
+      "msg": "G1 scalar multiplication failed in IC accumulator"
+    },
+    {
+      "code": 6054,
+      "name": "PoseidonHashFailed",
+      "msg": "Poseidon hash computation failed"
+    },
+    {
+      "code": 6055,
+      "name": "VkAccountSizeMismatch",
+      "msg": "VK account size mismatch - expected 8 + BYTE_LEN"
+    },
+    {
+      "code": 6056,
+      "name": "InvalidDenomination",
+      "msg": "Invalid denomination - must be greater than 0"
+    },
+    {
+      "code": 6057,
+      "name": "InvalidStateAccount",
+      "msg": "Invalid state account - PDA does not match expected derivation"
+    },
+    {
+      "code": 6058,
+      "name": "InvalidVaultAccount",
+      "msg": "Invalid vault account - PDA does not match expected derivation"
+    },
+    {
+      "code": 6059,
+      "name": "AlreadyInitialized",
+      "msg": "Account already initialized"
+    },
+    {
+      "code": 6060,
+      "name": "InvalidLeafIndex",
+      "msg": "Invalid leaf index - exceeds current leaf count"
+    },
+    {
+      "code": 6061,
+      "name": "RootNotInRing",
+      "msg": "Root not found in ring buffer - too old or invalid"
+    },
+    {
+      "code": 6062,
+      "name": "SlotNotMonotonic",
+      "msg": "Slot must be monotonically increasing"
+    },
+    {
+      "code": 6063,
+      "name": "RootRingRequired",
+      "msg": "RootRing account required for devnet/mainnet deployment"
+    },
+    {
+      "code": 6064,
+      "name": "ShardFull",
+      "msg": "Shard is full - transition to next shard required (DEPRECATED)"
+    },
+    {
+      "code": 6065,
+      "name": "ShardNotFull",
+      "msg": "Shard is not full - cannot advance to next shard yet"
+    },
+    {
+      "code": 6066,
+      "name": "InsufficientBalance",
+      "msg": "Insufficient balance in compressed account for withdrawal"
+    },
+    {
+      "code": 6067,
+      "name": "InvalidWithdrawAmount",
+      "msg": "Invalid withdrawal amount - must be positive and match compressed account balance"
+    }
+  ],
+  "types": [
+    {
+      "name": "AuthorityChanged",
+      "docs": [
+        "P3.3: Event emitted when authority is changed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CommitmentRecord",
+      "docs": [
+        "Commitment uniqueness guard - existence means commitment used",
+        "Mathematical guarantee: commitment → PDA mapping is bijective",
+        "Leverages Solana's account model for O(1) uniqueness enforcement"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "DepositEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "leaf_index",
+            "type": "u32"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositProofData",
+      "docs": [
+        "Event emitted on deposit containing proof data (siblings + root)",
+        "This is the canonical source of truth for withdrawal witness generation",
+        "Siblings are captured BEFORE frontier mutation, so they're correct for verification"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "leaf_index",
+            "docs": [
+              "Leaf index assigned to this deposit"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "root_after",
+            "docs": [
+              "Root after this deposit (matches proof target root)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "siblings_be",
+            "docs": [
+              "Siblings array (20 levels, BigEndian format matching Poseidon syscall)"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                20
+              ]
+            }
+          },
+          {
+            "name": "positions",
+            "docs": [
+              "Path positions (0=LEFT, 1=RIGHT) for verification"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigrationEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount_migrated",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolCooldownConfig",
+      "docs": [
+        "Pool-level cooldown configuration",
+        "Authority-controlled, tunable without redeploy"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "Authority who can update the config"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "cooldown_slots",
+            "docs": [
+              "Number of slots to wait between deposits",
+              "3 slots ≈ 1.2 seconds on Solana mainnet (~400ms/slot)",
+              "Set to 0 to disable cooldown"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "enabled",
+            "docs": [
+              "Whether cooldown is enabled",
+              "Allows disabling without changing cooldown_slots"
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RootEntry",
+      "docs": [
+        "Single entry in the RootRing"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "docs": [
+              "Merkle root (32 bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot when this root was inserted (for temporal tracking)"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RootRing",
+      "docs": [
+        "RootRing: LEGACY ring buffer of K=128 recent Merkle roots (localnet only)",
+        "",
+        "IMPORTANT: This is the LEGACY_ROOT_RING, used only for localnet backward compatibility.",
+        "For devnet/mainnet, use the SHARDED_ROOT_RING (20 shards × 128 = 2560 capacity).",
+        "",
+        "Purpose: Enable withdrawals against any of the last K roots, eliminating",
+        "dependency on indexer synchronization. Users can withdraw as long as their",
+        "deposit is within the K-root window (~days of validity).",
+        "",
+        "Architecture: Fixed-size ring buffer (no reallocs), circular head pointer",
+        "wraps at capacity. Slots provide temporal ordering for root expiry tracking."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "docs": [
+              "Schema version for future upgrades"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "capacity",
+            "docs": [
+              "Ring capacity (K = 128) - legacy ring, localnet only",
+              "Note: Devnet/mainnet use sharded ring (20 × 128 = 2560)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "head",
+            "docs": [
+              "Next write index (wraps at capacity)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Alignment padding to ensure entries starts at 8-byte boundary"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "entries",
+            "docs": [
+              "Ring buffer of root entries (capacity = 128)"
+            ],
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "RootEntry"
+                  }
+                },
+                128
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RootRingMetadata",
+      "docs": [
+        "RootRingMetadata: Coordinator for sharded K=4,096 root ring",
+        "",
+        "Purpose: Track 20 sharded PDAs to bypass Solana's 10KB CPI limit while",
+        "maintaining efficient withdrawal validation. Provides 12.00 bits of privacy",
+        "(4,096 anonymity set) with ~585 day validity @ 7 deposits/day.",
+        "",
+        "Architecture: Sequential shard filling with lazy allocation. Deposits write",
+        "to active_shard_index, withdrawals search across all allocated shards.",
+        "",
+        "Design: 20 shards × 128 entries = 2,560 total capacity",
+        "for optimal arithmetic and bytemuck compatibility. Shard size: 5,144 bytes",
+        "(huge 5,096 byte safety margin under 10,240 byte CPI limit)."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "docs": [
+              "Schema version for future upgrades"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_capacity",
+            "docs": [
+              "Total capacity across all shards (4,096)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "shard_capacity",
+            "docs": [
+              "Entries per shard (128)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "num_shards",
+            "docs": [
+              "Number of shards (32)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "global_head",
+            "docs": [
+              "Global head pointer (0..4,095)",
+              "Points to next insertion position across entire ring"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "active_shard_index",
+            "docs": [
+              "Currently active shard index (0..31)",
+              "Deposits write to this shard until it fills"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "_padding",
+            "docs": [
+              "Padding for 8-byte alignment"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "shard_pdas",
+            "docs": [
+              "Array of shard PDA addresses (lazy allocated)",
+              "Pubkey::default() indicates shard not yet allocated"
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                20
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RootRingShard",
+      "docs": [
+        "RootRingShard: Single shard holding 128 root entries",
+        "",
+        "Purpose: Store a contiguous chunk of the K=4,096 root ring. Each shard",
+        "stays safely under Solana's 10,240 byte CPI limit (5,144 bytes total).",
+        "",
+        "Architecture: Fixed-size array of RootEntry, sequential filling via local_head.",
+        "When full, metadata transitions to next shard.",
+        "",
+        "Design: 128 entries (power-of-2 for bytemuck compatibility and optimal arithmetic).",
+        "128 × 40 bytes = 5,120 bytes (huge 5,096 byte safety margin under CPI limit)."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "docs": [
+              "Schema version for future upgrades"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "shard_index",
+            "docs": [
+              "Shard index (0..31)"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "local_head",
+            "docs": [
+              "Local head within this shard (0..127)",
+              "Points to next insertion position within shard"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "entries",
+            "docs": [
+              "Root entries in this shard (128 entries)"
+            ],
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "RootEntry"
+                  }
+                },
+                128
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RootRingUpdate",
+      "docs": [
+        "Event emitted when a root is pushed to the rolling ring buffer (Phase R)",
+        "Enables daemon fast-forward logic and operational monitoring"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root",
+            "docs": [
+              "Root that was pushed"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot when root was inserted"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "head",
+            "docs": [
+              "Ring head position after push (index of next write)"
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SecurityConfigUpdated",
+      "docs": [
+        "P3.3: Event emitted when security config is updated"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_relayer_fee_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "daily_withdraw_limit",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "emergency_paused",
+            "type": {
+              "option": "bool"
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StateView",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "denomination",
+            "type": "u64"
+          },
+          {
+            "name": "next_index",
+            "type": "u32"
+          },
+          {
+            "name": "current_root_index",
+            "type": "u32"
+          },
+          {
+            "name": "merkle_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "vk_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "vk_sha256",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "total_roots",
+            "type": "u32"
+          },
+          {
+            "name": "max_deposits",
+            "type": "u32"
+          },
+          {
+            "name": "fill_percentage",
+            "type": "u16"
+          },
+          {
+            "name": "max_relayer_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "emergency_paused",
+            "type": "bool"
+          },
+          {
+            "name": "daily_withdraw_limit",
+            "type": "u64"
+          },
+          {
+            "name": "daily_withdrawn",
+            "type": "u64"
+          },
+          {
+            "name": "last_limit_reset",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyingKeyAccount",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "magic",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "sha256_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalized",
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "type": {
+              "array": [
+                "u8",
+                1
+              ]
+            }
+          },
+          {
+            "name": "length",
+            "type": "u16"
+          },
+          {
+            "name": "data",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    512
+                  ]
+                },
+                3
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VkBound",
+      "docs": [
+        "Event emitted when VK is bound to state"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "vk_sha256",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VkChunkAppended",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "offset",
+            "type": "u32"
+          },
+          {
+            "name": "chunk_size",
+            "type": "u32"
+          },
+          {
+            "name": "total_uploaded",
+            "type": "u32"
+          },
+          {
+            "name": "expected_size",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VkFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vk_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_size",
+            "type": "u32"
+          },
+          {
+            "name": "sha256_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WithdrawLightArgs",
+      "docs": [
+        "Withdraw instruction arguments - wire format using only primitives",
+        "",
+        "**Design Principle**: Wire Format Simplicity",
+        "- Uses only primitives (u8, u64, [u8; N], bool, Option<>) for clean IDL generation",
+        "- TypeScript clients can easily serialize/deserialize without Light Protocol types",
+        "- Decouples from Light Protocol's internal type changes",
+        "- Handler converts primitives to Light types at the boundary",
+        "",
+        "**Pattern**: Follows Light Protocol's own pattern (see MultiInputTokenDataWithContext)",
+        "and industry best practices (Marinade, Metaplex) - wire format stays simple,",
+        "business logic uses richer domain types."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof_a",
+            "docs": [
+              "Groth16 proof component A (32 bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_b",
+            "docs": [
+              "Groth16 proof component B (64 bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "proof_c",
+            "docs": [
+              "Groth16 proof component C (32 bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "compressed_account_owner",
+            "docs": [
+              "Owner of the compressed account being consumed (Pubkey as bytes)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "compressed_account_lamports",
+            "docs": [
+              "Balance of the compressed account (in lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "compressed_account_address",
+            "docs": [
+              "Address field for compressed account",
+              "⚠️ NOTE: The \"new_close pattern\" mentioned in historical docs is DEPRECATED (see ARCHITECTURE.md)",
+              "Current implementation: Always pass [0u8; 32] for anonymous accounts (addressless deposits)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "compressed_account_data",
+            "docs": [
+              "Compressed account data (stores the 32-byte commitment)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "merkle_tree_pubkey_index",
+            "docs": [
+              "Index of merkle tree in remaining_accounts array"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "queue_pubkey_index",
+            "docs": [
+              "Index of queue (nullifier queue) in remaining_accounts array",
+              "Note: Light Protocol calls this queue_pubkey_index"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "leaf_index",
+            "docs": [
+              "Leaf index in the merkle tree"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "prove_by_index",
+            "docs": [
+              "Whether to prove by index (vs by address)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "root_index",
+            "docs": [
+              "Index of root in root history that proof validates against"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "system_accounts_offset",
+            "docs": [
+              "Offset where system accounts start in the full account array",
+              "Returned by PackedAccounts::to_account_metas() as the second value"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "packed_accounts_offset",
+            "docs": [
+              "Offset where packed accounts start in the full account array",
+              "Returned by PackedAccounts::to_account_metas() as the third value"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "withdraw_amount",
+            "docs": [
+              "Amount to withdraw (in lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "change_amount",
+            "docs": [
+              "Optional change amount (for partial withdrawals)",
+              "If None, this is a full withdrawal",
+              "If Some(amount), creates a new compressed note with this balance"
+            ],
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "change_address",
+            "docs": [
+              "Optional new address for change note (required if change_amount is Some)"
+            ],
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WithdrawalEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "to",
+            "type": "pubkey"
+          },
+          {
+            "name": "nullifier_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "relayer",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZerokState",
+      "docs": [
+        "Zero-copy ZeroK pool state with fixed-size arrays",
+        "All fields are deterministic, no dynamic allocation",
+        "This ensures stable byte layout and proper serialization"
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "denomination",
+            "type": "u64"
+          },
+          {
+            "name": "filled_subtrees",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                20
+              ]
+            }
+          },
+          {
+            "name": "zeros",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                20
+              ]
+            }
+          },
+          {
+            "name": "current_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "next_index",
+            "type": "u32"
+          },
+          {
+            "name": "_merkle_pad",
+            "type": "u32"
+          },
+          {
+            "name": "roots",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                30
+              ]
+            }
+          },
+          {
+            "name": "current_root_index",
+            "type": "u32"
+          },
+          {
+            "name": "_roots_pad",
+            "type": "u32"
+          },
+          {
+            "name": "vk_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "vk_sha256",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "max_relayer_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "emergency_paused",
+            "type": "u8"
+          },
+          {
+            "name": "_security_pad1",
+            "type": "u8"
+          },
+          {
+            "name": "_security_pad2",
+            "type": "u32"
+          },
+          {
+            "name": "daily_withdraw_limit",
+            "type": "u64"
+          },
+          {
+            "name": "last_limit_reset",
+            "type": "i64"
+          },
+          {
+            "name": "daily_withdrawn",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZerokStateV2",
+      "docs": [
+        "v2 State with version and endianness tracking"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "docs": [
+              "Version identifier (= 2 for v2 pool)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "endianness",
+            "docs": [
+              "Endianness flag (1 = BE, 0 = LE)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "Admin authority"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "verifying_key",
+            "docs": [
+              "Stored verifying key for the circuit"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "vk_finalized",
+            "docs": [
+              "Is VK finalized flag"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "denomination",
+            "docs": [
+              "Denomination in lamports"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "leaves_count",
+            "docs": [
+              "Number of deposits"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "current_root_index",
+            "docs": [
+              "Current root index"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "roots",
+            "docs": [
+              "Merkle tree roots history"
+            ],
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "emergency_paused",
+            "docs": [
+              "Emergency pause flag"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "max_fee_bps",
+            "docs": [
+              "Maximum relayer fee (basis points)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "daily_limit",
+            "docs": [
+              "Daily withdrawal limit (lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "daily_withdrawn",
+            "docs": [
+              "Daily withdrawals tracker"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_reset",
+            "docs": [
+              "Last reset timestamp"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "levels",
+            "docs": [
+              "Merkle tree levels (optimization)"
+            ],
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "reserved",
+            "docs": [
+              "Reserved space for future upgrades"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

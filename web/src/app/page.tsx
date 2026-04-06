@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AppHome from './app/page';
 
-const APP_HOST_PREFIXES = ['devnet.', 'testnet.'];
+const APP_HOST_PREFIXES = ['devnet.', 'testnet.', 'app.'];
 
 export default function Home() {
   const host = headers().get('host') || '';

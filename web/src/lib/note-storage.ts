@@ -206,6 +206,41 @@ export function importNoteFromFile(file: File): Promise<Note> {
   });
 }
 
+// ==========================================
+// Encrypted Blob Storage (wallet-recoverable)
+// ==========================================
+
+const ENCRYPTED_BLOBS_KEY = 'zerok_enc_notes_v1';
+
+/**
+ * Save an encrypted note blob to localStorage, keyed by commitment.
+ * Called after each deposit. Enables cross-device recovery via wallet signature.
+ */
+export function saveEncryptedBlob(commitment: string, blob: string): void {
+  try {
+    const stored: Record<string, string> = JSON.parse(
+      localStorage.getItem(ENCRYPTED_BLOBS_KEY) || '{}'
+    );
+    stored[commitment] = blob;
+    localStorage.setItem(ENCRYPTED_BLOBS_KEY, JSON.stringify(stored));
+    console.log('[note-storage] Saved encrypted blob for:', commitment.slice(2, 10));
+  } catch (err) {
+    console.error('[note-storage] Failed to save encrypted blob:', err);
+  }
+}
+
+/**
+ * Load all encrypted blobs from localStorage.
+ * Returns { commitment → encryptedBlob } map.
+ */
+export function loadEncryptedBlobs(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(ENCRYPTED_BLOBS_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
 // Export multiple notes as a ZIP file
 export async function exportNotesAsZip(notes: Note[]): Promise<void> {
   if (notes.length === 0) return;

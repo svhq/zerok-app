@@ -11,7 +11,7 @@
  *   1. state.is_known_root(&root) - checks STATE_ROOT_HISTORY (256 entries)
  *   2. Search all allocated shards in SHARDED_ROOT_RING (20 × 128 = 2560 entries)
  *
- * If root ∉ ACCEPTED_ROOT_SET, withdrawal fails with ProtocolError::RootNotInRing
+ * If root ∉ ACCEPTED_ROOT_SET, withdrawal fails with ZeroKError::RootNotInRing
  */
 
 import { Connection, PublicKey } from '@solana/web3.js';

@@ -1,14 +1,14 @@
 {
   "version": 2,
-  "generatedAt": "2026-04-05T03:46:10.102Z",
+  "generatedAt": "2026-04-05T18:34:47.584Z",
   "generator": "scripts/generate-web-config.js",
-  "network": "devnet",
-  "rpcUrl": "https://api.devnet.solana.com",
+  "network": "mainnet-beta",
+  "rpcUrl": "https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY",
   "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
   "relayerWallet": null,
   "pools": [
     {
-      "poolId": "devnet-01sol-v2c",
+      "poolId": "mainnet-beta-01sol-v2c",
       "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
       "statePda": "2KKwukWvZm88BVZ6KSUsyWbJPArWbaQLi78ui1pX8zgm",
       "vaultPda": "CfbE7btZt77cUrg7RM9aPnB8df77qVeKCysKyKDjJnZw",
@@ -45,7 +45,7 @@
       "ringCapacity": 2560
     },
     {
-      "poolId": "devnet-1sol-v2c",
+      "poolId": "mainnet-beta-1sol-v2c",
       "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
       "statePda": "6Sc4K38dNGjmxqHVweFu7DM8JzsvPYFrB3SbgdYfynRh",
       "vaultPda": "DiEe3MF7WF8uVmykZwSmfQYoziG8Sc24FZ5WhcwShgjH",
@@ -82,7 +82,7 @@
       "ringCapacity": 2560
     },
     {
-      "poolId": "devnet-10sol-v2c",
+      "poolId": "mainnet-beta-10sol-v2c",
       "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
       "statePda": "2S8gHNznFiyQfkST5iiFD3UmTV5z8rk9F8ZaicPSf4xT",
       "vaultPda": "7WoKPdqvicxTGuuEuWiQvU7bXi2xigkukAz1xbr2KQHK",
@@ -119,7 +119,7 @@
       "ringCapacity": 2560
     },
     {
-      "poolId": "devnet-100sol-v2c",
+      "poolId": "mainnet-beta-100sol-v2c",
       "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
       "statePda": "9XV44deAb2CUh5RrQFxrrPfb5jyUWE3sdmamDzt78xfM",
       "vaultPda": "AgCWC7BKDMskvJAKYvQW1pkiZDuoQveTZRS33yQw1m8u",
@@ -156,7 +156,7 @@
       "ringCapacity": 2560
     },
     {
-      "poolId": "devnet-1000sol-v2c",
+      "poolId": "mainnet-beta-1000sol-v2c",
       "programId": "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v",
       "statePda": "Eow1E5dS8vudBoegZfy9sbn99JtKfWn9ofRQGnpeWtpH",
       "vaultPda": "BM7oTYGTWdEr5Ev7TFKxytjYbgt6eVZwdj69ZButZwzY",
@@ -194,11 +194,11 @@
     }
   ],
   "poolIds": [
-    "devnet-01sol-v2c",
-    "devnet-1sol-v2c",
-    "devnet-10sol-v2c",
-    "devnet-100sol-v2c",
-    "devnet-1000sol-v2c"
+    "mainnet-beta-01sol-v2c",
+    "mainnet-beta-1sol-v2c",
+    "mainnet-beta-10sol-v2c",
+    "mainnet-beta-100sol-v2c",
+    "mainnet-beta-1000sol-v2c"
   ],
   "denominationsSol": [
     0.1,
@@ -214,5 +214,5 @@
     "stateRootHistorySize": 256,
     "protocolFeeBps": 30
   },
-  "configHash": "2672b549b5c825a7"
+  "configHash": "cb2c9657f1a93709"
 }

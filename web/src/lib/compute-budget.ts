@@ -41,12 +41,16 @@ export function createComputeBudgetInstructions(
  * - Groth16 verification with altbn254 syscalls: <200k CU (per Light Protocol)
  * - Merkle proof verification: ~50k CU
  * - Account operations: ~30k CU
- * - Protocol logic: ~20k CU
+ * - Relayer logic: ~20k CU
  * - Total: ~300k CU, using 400k with buffer
  */
 
 // Deposit: Merkle tree insertion + hash operations (~60k actual, 100k with buffer)
 export const DEPOSIT_COMPUTE_UNITS = 100_000;
+
+// Deposit with Memo: deposit ~80k + Memo program data write ~5k + buffer = 300k
+// Memo uses keys:[] (no signer check) so no extra CU for signature verification
+export const DEPOSIT_WITH_MEMO_COMPUTE_UNITS = 300_000;
 
 // Withdrawal: ZK proof verification + Merkle proof (~300k actual, 400k with buffer)
 export const WITHDRAW_COMPUTE_UNITS = 400_000;

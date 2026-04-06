@@ -47,7 +47,7 @@ interface SnarkjsPublicSignals {
 export interface WithdrawParams {
   note: Note;
   recipient: PublicKey;
-  protocol: PublicKey;
+  relayer: PublicKey;
   fee: bigint;
   refund?: bigint;
 }
@@ -76,9 +76,9 @@ export interface GeneratedProof {
   rootResult?: RootAcceptanceResult; // Where the root was found (for correct shard PDA selection)
 }
 
-// Protocol submission data - everything needed to submit to protocol service
-// CRITICAL: User never signs. Protocol service signs and submits.
-export interface ProtocolSubmissionData {
+// Relayer submission data - everything needed to submit to relay
+// CRITICAL: User never signs. Relayer signs and submits.
+export interface RelayerSubmissionData {
   poolId: string;
   instruction: TransactionInstruction;
   note: Note;
@@ -93,7 +93,7 @@ export interface ProtocolSubmissionData {
 export async function buildWithdrawWitness(
   note: Note,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   fee: bigint,
   refund: bigint = 0n
 ): Promise<Record<string, string | string[] | number[]>> {
@@ -163,10 +163,10 @@ export async function buildWithdrawWitness(
   const [recipientHigh, recipientLow] = addressToBE32Parts(recipient.toBytes());
 
   // CRITICAL: Match CLI behavior for fee=0 case
-  // When fee=0, the on-chain contract expects Pubkey::default() (all zeros) for the protocol
-  // in the ZK proof's public inputs
-  const protocolForProof = fee === 0n ? PublicKey.default : protocol;
-  const [protocolHigh, protocolLow] = addressToBE32Parts(protocolForProof.toBytes());
+  // When fee=0, the on-chain contract expects Pubkey::default() (all zeros) for the relayer
+  // in the ZK proof's public inputs. This matches cli/commands/withdraw.js:724-732
+  const relayerForProof = fee === 0n ? PublicKey.default : relayer;
+  const [relayerHigh, relayerLow] = addressToBE32Parts(relayerForProof.toBytes());
 
   return {
     // Private inputs
@@ -180,8 +180,8 @@ export async function buildWithdrawWitness(
     nullifierHash: nullifierHash.toString(),
     recipientHigh: recipientHigh.toString(),
     recipientLow: recipientLow.toString(),
-    protocolHigh: protocolHigh.toString(),
-    protocolLow: protocolLow.toString(),
+    relayerHigh: relayerHigh.toString(),
+    relayerLow: relayerLow.toString(),
     fee: fee.toString(),
     refund: refund.toString(),
   };
@@ -254,7 +254,7 @@ export async function buildWithdrawTransaction(
   payer: PublicKey,
   note: Note,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   fee: bigint,
   proof: Uint8Array,
   nullifierHashBytes: Uint8Array,
@@ -324,12 +324,12 @@ export async function buildWithdrawTransaction(
   refundView.setBigUint64(0, 0n, true);
 
   // Build account list matching WithdrawV2Clean struct order:
-  // 1. pool_state (mut)
+  // 1. zerok_state (mut)
   // 2. vk_pda
   // 3. nullifier_record (mut)
   // 4. vault (mut)
   // 5. recipient (mut)
-  // 6. protocol (mut)
+  // 6. relayer (mut)
   // 7. payer (signer, mut)
   // 8. system_program
   // 9. root_ring (legacy, pass program_id as placeholder)
@@ -357,9 +357,9 @@ export async function buildWithdrawTransaction(
   }
 
   // CRITICAL: Match CLI behavior for fee=0 case
-  // When fee=0, use payer as the protocol account (not PublicKey.default() because
-  // it's the System Program and can't be mutable)
-  const protocolAccountForTx = fee === 0n ? payer : protocol;
+  // When fee=0, use payer as the relayer account (not PublicKey.default() because
+  // it's the System Program and can't be mutable). This matches cli/commands/withdraw.js:724-732
+  const relayerAccountForTx = fee === 0n ? payer : relayer;
 
   // Build keys array - base accounts first
   const keys = [
@@ -368,7 +368,7 @@ export async function buildWithdrawTransaction(
     { pubkey: nullifierPda, isSigner: false, isWritable: true },
     { pubkey: vaultPda, isSigner: false, isWritable: true },
     { pubkey: recipient, isSigner: false, isWritable: true },
-    { pubkey: protocolAccountForTx, isSigner: false, isWritable: true },
+    { pubkey: relayerAccountForTx, isSigner: false, isWritable: true },
     { pubkey: payer, isSigner: true, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     { pubkey: programId, isSigner: false, isWritable: false }, // root_ring placeholder (legacy)
@@ -416,7 +416,7 @@ export async function generateWithdrawProof(
   connection: Connection,
   note: Note,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   onProgress?: (status: string) => void
 ): Promise<GeneratedProof> {
   // Get pool config from note's poolId
@@ -453,7 +453,7 @@ export async function generateWithdrawProof(
 
   // Build witness with refreshed path data
   const refreshedNote = { ...note, rootAfter: freshRoot, siblings: freshSiblings };
-  const witness = await buildWithdrawWitness(refreshedNote, recipient, protocol, fee);
+  const witness = await buildWithdrawWitness(refreshedNote, recipient, relayer, fee);
 
   onProgress?.('Generating ZK proof...');
 
@@ -489,7 +489,7 @@ export async function generateWithdrawProof(
 export async function buildTransactionFromProof(
   generatedProof: GeneratedProof,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   payer: PublicKey,
   blockhash: string
 ): Promise<PreparedWithdrawal> {
@@ -500,7 +500,7 @@ export async function buildTransactionFromProof(
     payer,
     note,
     recipient,
-    protocol,
+    relayer,
     fee,
     proof,
     nullifierHashBytes,
@@ -525,7 +525,7 @@ export async function prepareWithdraw(
   connection: Connection,
   note: Note,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   payer: PublicKey,
   blockhash: string,
   onProgress?: (status: string) => void
@@ -566,7 +566,7 @@ export async function prepareWithdraw(
 
   // Build witness with refreshed path data
   const refreshedNote = { ...note, rootAfter: freshRoot, siblings: freshSiblings };
-  const witness = await buildWithdrawWitness(refreshedNote, recipient, protocol, fee);
+  const witness = await buildWithdrawWitness(refreshedNote, recipient, relayer, fee);
 
   onProgress?.('Generating ZK proof...');
 
@@ -589,7 +589,7 @@ export async function prepareWithdraw(
     payer,
     note,
     recipient,
-    protocol,
+    relayer,
     fee,
     proof,
     nullifierHashBytes,
@@ -616,7 +616,7 @@ async function buildWithdrawTransactionWithBlockhash(
   payer: PublicKey,
   note: Note,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   fee: bigint,
   proof: Uint8Array,
   nullifierHashBytes: Uint8Array,
@@ -687,18 +687,18 @@ async function buildWithdrawTransactionWithBlockhash(
   console.log('[withdrawal] Root bytes:', Array.from(rootBytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join('') + '...');
 
   // CRITICAL: Match CLI behavior for fee=0 case
-  // When fee=0, use payer as the protocol account (not PublicKey.default() because
-  // it's the System Program and can't be mutable)
-  const protocolAccountForTx = fee === 0n ? payer : protocol;
+  // When fee=0, use payer as the relayer account (not PublicKey.default() because
+  // it's the System Program and can't be mutable). This matches cli/commands/withdraw.js:724-732
+  const relayerAccountForTx = fee === 0n ? payer : relayer;
 
   // Build keys array - base accounts first
   const keys = [
-    { pubkey: statePda, isSigner: false, isWritable: true },      // 1. pool_state
+    { pubkey: statePda, isSigner: false, isWritable: true },      // 1. zerok_state
     { pubkey: vkPda, isSigner: false, isWritable: false },        // 2. vk_pda
     { pubkey: nullifierPda, isSigner: false, isWritable: true },  // 3. nullifier_record
     { pubkey: vaultPda, isSigner: false, isWritable: true },      // 4. vault
     { pubkey: recipient, isSigner: false, isWritable: true },     // 5. recipient
-    { pubkey: protocolAccountForTx, isSigner: false, isWritable: true },       // 6. protocol
+    { pubkey: relayerAccountForTx, isSigner: false, isWritable: true },       // 6. relayer
     { pubkey: payer, isSigner: true, isWritable: true },          // 7. payer (signer)
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 8. system_program
     { pubkey: programId, isSigner: false, isWritable: false },    // 9. root_ring (placeholder)
@@ -728,32 +728,32 @@ async function buildWithdrawTransactionWithBlockhash(
 }
 
 /**
- * Build withdrawal instruction for protocol service submission.
+ * Build withdrawal instruction for relayer submission.
  *
  * CRITICAL PRIVACY INVARIANT:
  * This builds ONLY the instruction - no transaction, no blockhash, no payer.
- * The protocol service will:
+ * The relayer service will:
  * 1. Validate the instruction
- * 2. Build the transaction with its own wallet as payer/signer
- * 3. Sign with the protocol wallet
+ * 2. Build the transaction with its own keypair as payer/signer
+ * 3. Sign with the relayer keypair
  * 4. Submit to the network
  *
  * The user's wallet NEVER signs withdrawal transactions.
  *
  * @param note - Note to withdraw
  * @param recipient - Recipient address (any wallet, for privacy use fresh)
- * @param protocol - Protocol public key (from config)
+ * @param relayer - Relayer public key (from config)
  * @param fee - Fee in lamports
  * @param proof - Generated proof bytes
  * @param nullifierHashBytes - Nullifier hash as bytes
  * @param rootBytes - Root as bytes
  * @param rootResult - Where the root was found (for shard selection)
- * @returns TransactionInstruction ready for protocol submission
+ * @returns TransactionInstruction ready for relay submission
  */
 export async function buildWithdrawInstruction(
   note: Note,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   fee: bigint,
   proof: Uint8Array,
   nullifierHashBytes: Uint8Array,
@@ -818,30 +818,30 @@ export async function buildWithdrawInstruction(
     console.log(`[withdrawal/instruction] Using fallback shard ${shardIndex} for daemon path`);
   }
 
-  // CRITICAL: For protocol submission, the protocol wallet is BOTH:
-  // - Account[5] (protocol - receives fee)
+  // CRITICAL: For relayer submission, the relayer is BOTH:
+  // - Account[5] (relayer - receives fee)
   // - Account[6] (payer - signs and pays tx fees)
-  // The protocol service validates this and replaces the signer.
+  // The relay server validates this and replaces the signer.
   //
-  // When fee=0, we still use protocol (not PublicKey.default) because
-  // the protocol service validates that account[5] and account[6] match its wallet.
-  const protocolAccountForTx = protocol;
+  // When fee=0, we still use relayer (not PublicKey.default) because
+  // the relay server validates that account[5] and account[6] match its keypair.
+  const relayerAccountForTx = relayer;
 
   // Build keys array
-  // IMPORTANT: The protocol service validates that:
+  // IMPORTANT: The relay server validates that:
   // - Account[0] matches pool statePda
   // - Account[1] matches pool vkPda
   // - Account[3] matches pool vaultPda
-  // - Account[5] (protocol) matches the protocol service's wallet
-  // - Account[6] (payer) matches the protocol service's wallet
+  // - Account[5] (relayer) matches the relay service's keypair
+  // - Account[6] (payer) matches the relay service's keypair
   const keys = [
-    { pubkey: statePda, isSigner: false, isWritable: true },      // 0. pool_state
+    { pubkey: statePda, isSigner: false, isWritable: true },      // 0. zerok_state
     { pubkey: vkPda, isSigner: false, isWritable: false },        // 1. vk_pda
     { pubkey: nullifierPda, isSigner: false, isWritable: true },  // 2. nullifier_record
     { pubkey: vaultPda, isSigner: false, isWritable: true },      // 3. vault
     { pubkey: recipient, isSigner: false, isWritable: true },     // 4. recipient
-    { pubkey: protocolAccountForTx, isSigner: false, isWritable: true },  // 5. protocol (receives fee)
-    { pubkey: protocol, isSigner: true, isWritable: true },       // 6. payer (protocol signs)
+    { pubkey: relayerAccountForTx, isSigner: false, isWritable: true },  // 5. relayer (receives fee)
+    { pubkey: relayer, isSigner: true, isWritable: true },        // 6. payer (relay signs)
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 7. system_program
     { pubkey: programId, isSigner: false, isWritable: false },    // 8. root_ring (placeholder)
     { pubkey: metadataPda, isSigner: false, isWritable: false },  // 9. root_ring_metadata
@@ -860,20 +860,20 @@ export async function buildWithdrawInstruction(
 }
 
 /**
- * Generate withdrawal proof and build instruction for protocol submission.
+ * Generate withdrawal proof and build instruction for relay submission.
  *
  * CRITICAL PRIVACY INVARIANT:
  * This is the ONLY way to perform withdrawals. User never signs.
  *
- * @returns ProtocolSubmissionData ready to submit via protocol-client.ts
+ * @returns RelayerSubmissionData ready to submit via relayer-client.ts
  */
-export async function prepareWithdrawalForProtocol(
+export async function prepareWithdrawalForRelay(
   connection: Connection,
   note: Note,
   recipient: PublicKey,
-  protocol: PublicKey,
+  relayer: PublicKey,
   onProgress?: (status: string) => void
-): Promise<ProtocolSubmissionData> {
+): Promise<RelayerSubmissionData> {
   // Get pool config from note's poolId
   const poolConfig = getPoolConfig(note.poolId);
   const denomination = BigInt(poolConfig.denominationLamports);
@@ -881,7 +881,7 @@ export async function prepareWithdrawalForProtocol(
   // Read max_fee_bps from on-chain state to ensure fee matches pool's actual limit
   const maxFeeBps = await getOnChainMaxFeeBps(poolConfig.statePda);
   const fee = calculateFeeFromBps(denomination, maxFeeBps);
-  console.log(`[withdrawal/protocol] Using on-chain max_fee_bps: ${maxFeeBps} (fee: ${fee} lamports)`);
+  console.log(`[withdrawal/relay] Using on-chain max_fee_bps: ${maxFeeBps} (fee: ${fee} lamports)`);
 
   onProgress?.('Checking if root is in on-chain ring buffer...');
 
@@ -893,21 +893,21 @@ export async function prepareWithdrawalForProtocol(
 
   if (rootResult.found) {
     onProgress?.('Root found in on-chain ring buffer');
-    console.log(`[withdrawal/protocol] Root in ${rootResult.source}, using note data directly: ${freshRoot.slice(0, 16)}...`);
+    console.log(`[withdrawal/relay] Root in ${rootResult.source}, using note data directly: ${freshRoot.slice(0, 16)}...`);
   } else {
     onProgress?.('Root aged out, fetching fresh path from daemon...');
-    console.log('[withdrawal/protocol] Root not in ring, calling daemon for fresh path...');
+    console.log('[withdrawal/relay] Root not in ring, calling daemon for fresh path...');
     const daemonPath = await getMerklePath(note.poolId, note.commitment);
     freshRoot = daemonPath.root;
     freshSiblings = daemonPath.pathElements;
-    console.log(`[withdrawal/protocol] Using fresh root from daemon: ${freshRoot.slice(0, 16)}...`);
+    console.log(`[withdrawal/relay] Using fresh root from daemon: ${freshRoot.slice(0, 16)}...`);
   }
 
   onProgress?.('Building witness...');
 
   // Build witness with refreshed path data
   const refreshedNote = { ...note, rootAfter: freshRoot, siblings: freshSiblings };
-  const witness = await buildWithdrawWitness(refreshedNote, recipient, protocol, fee);
+  const witness = await buildWithdrawWitness(refreshedNote, recipient, relayer, fee);
 
   onProgress?.('Generating ZK proof...');
 
@@ -923,13 +923,13 @@ export async function prepareWithdrawalForProtocol(
   const rootBigInt = rootHex ? BigInt('0x' + rootHex) : 0n;
   const rootBytes = toBE32(rootBigInt);
 
-  onProgress?.('Building instruction for protocol...');
+  onProgress?.('Building instruction for relayer...');
 
-  // Build instruction (NO TRANSACTION - protocol service handles that)
+  // Build instruction (NO TRANSACTION - relayer handles that)
   const instruction = await buildWithdrawInstruction(
     note,
     recipient,
-    protocol,
+    relayer,
     fee,
     proof,
     nullifierHashBytes,
@@ -937,7 +937,7 @@ export async function prepareWithdrawalForProtocol(
     rootResult.found ? rootResult : undefined
   );
 
-  onProgress?.('Ready for protocol submission');
+  onProgress?.('Ready for relay submission');
 
   return {
     poolId: note.poolId,
@@ -957,13 +957,13 @@ export async function prepareWithdrawalForProtocol(
  *
  * CRITICAL PRIVACY INVARIANT:
  * User wallets MUST NEVER sign withdrawal transactions.
- * All withdrawals MUST go through the protocol service.
+ * All withdrawals MUST go through the relayer.
  *
  * Use instead:
- *   1. prepareWithdrawalForProtocol() - generates proof and instruction
- *   2. submitWithdrawalToProtocol() - from protocol-client.ts
+ *   1. prepareWithdrawalForRelay() - generates proof and instruction
+ *   2. submitWithdrawalToRelay() - from relayer-client.ts
  *
- * See: WithdrawBar.tsx for the correct protocol-only flow.
+ * See: WithdrawBar.tsx for the correct relayer-only flow.
  *
  * @throws Always throws to prevent privacy violations
  */
@@ -972,13 +972,13 @@ export async function executeWithdraw(
   _signTransaction: (tx: Transaction) => Promise<Transaction>,
   _note: Note,
   _recipient: PublicKey,
-  _protocol: PublicKey,
+  _relayer: PublicKey,
   _onProgress?: (status: string) => void
 ): Promise<WithdrawResult> {
   throw new Error(
     'PRIVACY VIOLATION: executeWithdraw() is deprecated and has been disabled. ' +
     'User wallets must NEVER sign withdrawal transactions as this links the wallet to the withdrawal. ' +
-    'Use prepareWithdrawalForProtocol() + submitWithdrawalToProtocol() instead. ' +
-    'See WithdrawBar.tsx for the correct protocol-only withdrawal flow.'
+    'Use prepareWithdrawalForRelay() + submitWithdrawalToRelay() instead. ' +
+    'See WithdrawBar.tsx for the correct relayer-only withdrawal flow.'
   );
 }
