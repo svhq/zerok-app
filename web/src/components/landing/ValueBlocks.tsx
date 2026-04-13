@@ -4,27 +4,27 @@ const features = [
   {
     icon: 'shield',
     title: 'Zero-Knowledge Privacy',
-    description: 'Cryptographic proofs verify your withdrawal eligibility without revealing which deposit is yours.',
+    description: 'Cryptographic proofs verify your withdrawal without revealing which deposit is yours. The link between sender and recipient is mathematically broken.',
   },
   {
     icon: 'key',
     title: 'Self-Custodial',
-    description: 'Your funds, your control. The protocol never holds your private keys. Only you can withdraw with your note.',
+    description: 'Your wallet, your keys, your control. The protocol never holds your funds. Reconnect with the same wallet and your deposits are always there.',
   },
   {
     icon: 'layers',
-    title: 'Fixed Denominations',
-    description: 'Fixed vault sizes (1, 10, 100, 1000 SOL) maximize privacy by ensuring all deposits look identical.',
+    title: 'Deposit Any Amount',
+    description: 'Enter any amount. ZeroK automatically handles the privacy math behind the scenes — splitting, batching, optimizing. Starts from 0.1 SOL.',
   },
   {
     icon: 'zap',
-    title: 'Sub-Second Speed',
-    description: 'Sub-second deposits. Withdrawals verified on-chain in ~400ms.',
+    title: 'Effortless Withdrawals',
+    description: 'Protocol pays the gas. Recipient wallets need zero SOL. No files to upload, no setup — your notes appear automatically when you reconnect.',
   },
   {
     icon: 'lock',
     title: 'Verifiable Security',
-    description: 'Open-source contracts. On-chain proof verification. No trusted setup ceremonies — you verify everything.',
+    description: 'Open-source contracts audited on-chain. Every proof is verified by the Solana network itself. No trust required — the math speaks for itself.',
   },
 ];
 

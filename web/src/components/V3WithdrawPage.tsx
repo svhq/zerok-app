@@ -14,7 +14,7 @@ import { PublicKey } from '@solana/web3.js';
 import { V2Note } from '@/types/note';
 import { Button } from './ui';
 import { getCachedKey } from '@/lib/note-encryption';
-import { executeV3Withdrawal, isNoteWithdrawable } from '@/lib/v3-withdraw';
+import { executeV3Withdrawal, generateV3Proof, submitV3ToRelay, isNoteWithdrawable } from '@/lib/v3-withdraw';
 import { downloadNote, parseUploadedNote } from '@/lib/note-export';
 import { formatSol } from '@/lib/pool-config';
 import { saveNote, updateNoteStatus } from '@/lib/note-cache';
@@ -193,9 +193,10 @@ export default function V3WithdrawPage({ notes, setNotes, onRecoveryScan }: Prop
     seen.add(n.nullifier);
     return true;
   });
-  const withdrawable = unspent.filter(n => n.pathElements.length > 0 && n.merkleRoot);
-  const needsPath = unspent.filter(n => n.pathElements.length === 0 || !n.merkleRoot);
-  const totalBalance = unspent.reduce((s, n) => s + BigInt(n.amount), 0n);
+  // Filter by withdrawable flag (set by reconcile via isRootInHistory) — excludes ghost notes from closed programs
+  const withdrawable = unspent.filter(n => n.withdrawable !== false && n.pathElements.length > 0 && n.merkleRoot);
+  const needsPath = unspent.filter(n => n.withdrawable !== false && (n.pathElements.length === 0 || !n.merkleRoot));
+  const totalBalance = withdrawable.reduce((s, n) => s + BigInt(n.amount), 0n);
 
   // Parse send amount
   const sendLamports = useMemo(() => {
@@ -301,25 +302,48 @@ export default function V3WithdrawPage({ notes, setNotes, onRecoveryScan }: Prop
     }
 
     let lastSigResult = '';
+    const pipelineStart = performance.now();
+
+    // 2-wide relay pipeline: keep up to 2 relay calls in-flight while generating proofs.
+    // When proof > relay: behaves like 1-wide (relay finishes before queue fills).
+    // When proof < relay: 2nd slot absorbs the difference, eliminating wait time.
+    const MAX_INFLIGHT = 2;
+    const relayQueue: Array<{
+      promise: Promise<{ signature: string }>;
+      note: typeof toWithdraw[0];
+      idx: number;
+    }> = [];
+
+    // Helper: drain oldest relay from queue, mark note as spent
+    const drainOldest = async () => {
+      const oldest = relayQueue.shift()!;
+      const result = await oldest.promise;
+      lastSigResult = result.signature;
+      setNotes(prev => prev.map(n => n.nullifier === oldest.note.nullifier ? { ...n, status: 'spent' as const } : n));
+      if (publicKey) updateNoteStatus(publicKey.toBase58(), oldest.note.nullifier, 'spent');
+      return oldest;
+    };
 
     for (let i = 0; i < toWithdraw.length; i++) {
       const note = toWithdraw[i];
       const denomSol = Number(BigInt(note.amount)) / 1e9;
-      setProgress(`Sending ${denomSol} SOL (${i + 1}/${toWithdraw.length})...`);
 
       setNotes(prev => prev.map(n => n.nullifier === note.nullifier ? { ...n, status: 'pending_spend' as const } : n));
 
+      // Generate proof (CPU-bound, sequential)
+      setProgress(`Proving ${denomSol} SOL (${i + 1}/${toWithdraw.length})...`);
+      let proofData;
       try {
-        const result = await executeV3Withdrawal({
+        proofData = await generateV3Proof({
           note,
           recipient: recipientPubkey,
           onProgress: (msg: string) => setProgress(`(${i + 1}/${toWithdraw.length}) ${msg}`),
         });
-
-        lastSigResult = result.signature;
-        setNotes(prev => prev.map(n => n.nullifier === note.nullifier ? { ...n, status: 'spent' as const } : n));
-        if (publicKey) updateNoteStatus(publicKey.toBase58(), note.nullifier, 'spent');
       } catch (e: any) {
+        // Proof failed — drain all pending relays, then abort
+        for (const entry of relayQueue) {
+          try { await entry.promise; } catch { /* ignore during abort */ }
+        }
         setNotes(prev => prev.map(n => n.nullifier === note.nullifier ? { ...n, status: 'unspent' as const } : n));
         if (publicKey) updateNoteStatus(publicKey.toBase58(), note.nullifier, 'unspent');
         setError(`Failed: ${e.message}`);
@@ -328,8 +352,54 @@ export default function V3WithdrawPage({ notes, setNotes, onRecoveryScan }: Prop
         return;
       }
 
-      if (i < toWithdraw.length - 1) await new Promise(r => setTimeout(r, 500));
+      // If queue full (2 relays in-flight), wait for oldest to complete
+      if (relayQueue.length >= MAX_INFLIGHT) {
+        try {
+          const drained = await drainOldest();
+          console.log(`[V3Pipeline] Note ${drained.idx + 1} relay done, overlapped with note ${i + 1} proof (queue was full)`);
+        } catch (e: any) {
+          // Relay failed — revert all pending + current notes
+          for (const entry of relayQueue) {
+            setNotes(prev => prev.map(n => n.nullifier === entry.note.nullifier ? { ...n, status: 'unspent' as const } : n));
+            if (publicKey) updateNoteStatus(publicKey.toBase58(), entry.note.nullifier, 'unspent');
+          }
+          setNotes(prev => prev.map(n => n.nullifier === note.nullifier ? { ...n, status: 'unspent' as const } : n));
+          if (publicKey) updateNoteStatus(publicKey.toBase58(), note.nullifier, 'unspent');
+          setError(`Failed: ${e.message}`);
+          setPhase('error');
+          setProgress('');
+          return;
+        }
+      }
+
+      // Fire relay (don't await — add to queue)
+      setProgress(`Submitting ${denomSol} SOL (${i + 1}/${toWithdraw.length})...`);
+      relayQueue.push({
+        promise: submitV3ToRelay(proofData, (msg: string) => setProgress(`(${i + 1}/${toWithdraw.length}) ${msg}`)),
+        note,
+        idx: i,
+      });
     }
+
+    // Drain remaining queue (1-2 entries)
+    while (relayQueue.length > 0) {
+      try {
+        const drained = await drainOldest();
+        console.log(`[V3Pipeline] Note ${drained.idx + 1} relay done (draining queue)`);
+      } catch (e: any) {
+        for (const entry of relayQueue) {
+          setNotes(prev => prev.map(n => n.nullifier === entry.note.nullifier ? { ...n, status: 'unspent' as const } : n));
+          if (publicKey) updateNoteStatus(publicKey.toBase58(), entry.note.nullifier, 'unspent');
+        }
+        setError(`Failed: ${e.message}`);
+        setPhase('error');
+        setProgress('');
+        return;
+      }
+    }
+
+    const pipelineEnd = performance.now();
+    console.log(`[V3Pipeline] ${toWithdraw.length} notes withdrawn in ${((pipelineEnd - pipelineStart) / 1000).toFixed(1)}s (2-wide pipeline)`);
 
     setLastSig(lastSigResult);
     setPhase('done');

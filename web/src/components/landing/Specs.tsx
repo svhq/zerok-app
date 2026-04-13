@@ -6,12 +6,12 @@ const coreSpecs = [
   { label: 'Proof System', value: 'Groth16 (BN254)', note: 'Battle-tested SNARK' },
   { label: 'Hash Function', value: 'Poseidon', note: 'ZK-optimized' },
   { label: 'Merkle Tree Depth', value: '20 levels', note: '~1M deposits per vault' },
-  { label: 'Vault Sizes', value: '1, 10, 100, 1000 SOL', note: 'Fixed denominations' },
+  { label: 'Minimum Deposit', value: '0.1 SOL', note: 'Any amount above' },
 ];
 
 const performanceSpecs = [
   { label: 'Deposit Time', value: '< 1 second', note: 'Near-instant' },
-  { label: 'Proof Generation', value: '~20-30 seconds', note: 'Client-side (browser)' },
+  { label: 'Proof Generation', value: 'A few seconds', note: 'Client-side (browser)' },
   { label: 'On-chain Verification', value: '~400ms', note: 'Single transaction' },
   { label: 'Proof Size', value: '~256 bytes', note: 'Compact Groth16' },
 ];

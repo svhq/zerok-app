@@ -1,0 +1,77 @@
+[package]
+name = "zerok_v3"
+version = "0.1.0"
+description = "Privacy-preserving protocol for Solana — V3 (V1 backend + V2 UX)"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "zerok_v3"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+devnet = []
+verify-hook = []  # Enable test_verify instructions for testing
+debug-merkle = []  # Enable debug_merkle_computation for off-chain comparison
+skip-light-verification = []  # ⚠️ TEST ONLY: Allow Light CPI errors without failing transaction (NEVER use in production)
+
+[dependencies]
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+anchor-spl = "0.31.1"
+solana-program = "2.3"
+# Additional Solana crates for Light Protocol integration
+solana-account-info = "2.3"
+solana-sysvar = "2.3"
+solana-cpi = "2.2.1"
+solana-pubkey = "2.2.1"
+# Anza Solana-Poseidon for ZK-friendly hashing (syscall-based, no stack overflow)
+solana-poseidon = "3.0.0"
+# Error handling for Poseidon operations
+thiserror = "1.0"
+# Groth16 verifier using Solana's native syscalls (<200k CU)
+groth16-solana = "0.2.0"
+# ARK dependencies - ONLY for commitment calculation, NOT for proof verification
+# Proof negation happens client-side to avoid expensive on-chain operations
+ark-bn254 = "0.4.0"
+ark-ff = "0.4.0"
+# SHA256 for VK hashing (proper SHA256, not Solana's hash function)
+sha2 = "0.10"
+# Hex encoding/decoding for constants
+hex = "0.4"
+# For hex literals in compile-time constants
+hex-literal = "0.4"
+# Zero-copy deserialization (required for large account structs)
+bytemuck = { version = "1.14", features = ["derive"] }
+# Light Protocol - Using local git repo for type consistency across all Light dependencies
+light-sdk = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["v2"] }
+light-hasher = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["solana", "poseidon"] }
+light-compressed-account = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["solana"] }
+light-macros = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["solana"] }
+borsh = "0.10"  # Match Light Protocol's version
+
+[dev-dependencies]
+hex = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+num-bigint = "0.4"
+# Solana test dependencies
+solana-sdk = "2.3"
+solana-program-test = "2.3"
+solana-client = "2.3"
+# Light Protocol test framework - using git file:// to resolve workspace.dependencies correctly
+light-program-test = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["v2", "devenv"] }
+light-client = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["v2"] }
+# Light Protocol programs - using git file:// for workspace dependency resolution
+light-registry = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
+account-compression = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
+# Light Protocol program libs - using git file:// for workspace dependency resolution
+light-batched-merkle-tree = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
+light-test-utils = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
+forester-utils = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["devenv"] }
+tokio = { version = "1", features = ["full" ]}
+rand = "0.8"

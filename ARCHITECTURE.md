@@ -55,16 +55,39 @@ Poseidon is an arithmetic-friendly hash function specifically designed for use i
 
 Deposits are tracked using a Merkle tree, where each leaf is a commitment. This structure allows the prover to demonstrate membership (that their commitment exists in the tree) by providing a Merkle path — a logarithmic-size witness — without revealing which leaf is theirs.
 
-## Sharded Root Ring (V3)
+## V2 → V3: Solving Phantom Lighthouse
 
-V3 introduces a sharded root ring architecture for scalable root history management:
+### The Problem
+
+V2 stored all root history in a single on-chain state account of **131,920 bytes**. Phantom wallet's security scanner (Lighthouse/Blowfish) blocks transactions that write to large program-owned accounts from unverified dApps. At 131KB, ZeroK deposits were flagged as "potentially malicious" on mainnet — a showstopper for any production privacy tool.
+
+### The Solution: Sharded State Architecture
+
+V3 breaks the monolithic state into a compact core + 20 separate shard accounts:
+
+| Account | V2 Size | V3 Size |
+|---------|---------|---------|
+| State (core) | 131,920 bytes | **8,992 bytes** |
+| Root history (total) | In state | 256 in-state + 20 shards |
+| Each shard | N/A | 5,144 bytes |
+| **Largest single account** | **131,920 bytes** | **8,992 bytes** |
+
+No single V3 account exceeds 9KB. Phantom Lighthouse does not trigger.
+
+### Sharded Root Ring
+
+The root history is distributed across 20 shard accounts:
 
 - **20 shards**, each holding 128 root entries = **2,560 total root history**
 - Roots rotate through shards in order, providing a large withdrawal window
 - Each shard is a separate on-chain account, enabling parallel access
 - Commitments use `Poseidon(2)(nullifier, secret)` — fixed-denomination, simple and auditable
 
-This design replaces the flat root history of earlier versions, providing better scalability while maintaining the same privacy guarantees.
+### Batch Deposits (Blowfish Fix)
+
+V2 used `signAllTransactions` + `sendRawTransaction` for multi-note deposits — a pattern flagged by Blowfish as a potential drainer attack. V3 introduces `deposit_batch_v2_clean`, packing up to 15 commitments into a single on-chain instruction. The browser uses `sendTransaction` (1 tx) or Phantom's `signAndSendAllTransactions` (2 txs max) — never the banned signing pattern.
+
+Result: zero Phantom warnings on mainnet. A 20 SOL deposit fits in a single wallet popup.
 
 ## Protocol-Powered Withdrawals
 

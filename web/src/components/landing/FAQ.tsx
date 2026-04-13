@@ -4,32 +4,32 @@ import { useState } from 'react';
 
 const faqs = [
   {
-    question: 'What happens if I lose my note?',
-    answer: 'Your funds become permanently unrecoverable. The note contains the cryptographic secrets needed to generate a valid withdrawal proof. There is no recovery mechanism — this is the tradeoff for true self-custody. Always backup your note securely, ideally in multiple locations.',
+    question: 'How do I recover my deposits?',
+    answer: 'Your wallet is your recovery key. Reconnect the same wallet on any browser or device and your private balances reappear automatically. Notes are encrypted with a key derived from your wallet signature and stored on-chain — no files to back up, no passwords to remember. The only thing you need to protect is your wallet seed phrase.',
   },
   {
     question: 'How fast are deposits and withdrawals?',
-    answer: 'Deposits confirm in under a second (Solana finality). Withdrawals require ~20-30 seconds of local proof generation in your browser, then the on-chain verification completes in ~400ms. The proof generation time depends on your device\'s computing power.',
+    answer: 'Deposits confirm in under a second (Solana finality). Withdrawals generate a proof locally in a few seconds, and the on-chain verification completes in under half a second. Large withdrawals are pipelined automatically.',
   },
   {
-    question: 'Why fixed vault sizes? Can\'t I deposit any amount?',
-    answer: 'Fixed denominations (1, 10, 100, 1000 SOL) maximize privacy by ensuring all deposits in a vault look identical. If you could deposit arbitrary amounts, the specific amount itself would be a fingerprint. This is a deliberate privacy-vs-flexibility tradeoff.',
+    question: 'Can I deposit any amount?',
+    answer: 'Yes. Enter any amount starting from 0.1 SOL and ZeroK automatically handles the privacy math behind the scenes. You just enter the number and approve — usually a single wallet popup, even for larger amounts.',
   },
   {
     question: 'Is ZeroK open-source?',
-    answer: 'Yes. All smart contracts and zero-knowledge circuits are open-source and will be publicly available for independent review. You don\'t have to trust us — you can verify the code yourself.',
+    answer: 'Yes. All smart contracts, zero-knowledge circuits, and frontend code are open-source and publicly available for independent review. You don\'t have to trust us — you can verify the code yourself.',
   },
   {
     question: 'What could theoretically leak my privacy?',
-    answer: 'Timing correlation: if you deposit and withdraw too quickly, or at unusual times, an observer might correlate the transactions. Best practice: wait for other deposits to enter the vault before withdrawing. The larger the anonymity set, the stronger your privacy.',
+    answer: 'Timing correlation: if you deposit and withdraw too quickly, or at unusual times, an observer might correlate the transactions. Best practice: wait for other deposits to enter the pool before withdrawing, and always use a fresh recipient address. The larger the anonymity set, the stronger your privacy.',
   },
   {
     question: 'How does this compare to other privacy protocols?',
-    answer: 'ZeroK uses industry-standard cryptography (Groth16 proofs, Merkle trees, Poseidon hashes) and is built natively for Solana. This means faster finality, lower fees, and a user experience optimized for Solana wallets.',
+    answer: 'ZeroK uses industry-standard cryptography (Groth16 proofs, Merkle trees, Poseidon hashes) and is built natively for Solana. This means faster finality, lower fees, and a user experience optimized for Solana wallets — with wallet-derived recovery that no other privacy protocol on Solana currently offers.',
   },
   {
     question: 'Can I withdraw without paying gas?',
-    answer: 'Yes! ZeroK features protocol-powered withdrawals where the protocol handles your transaction and pays all network fees automatically. A small 0.3% protocol fee is deducted from your withdrawal amount. You never need SOL in your recipient wallet.',
+    answer: 'Yes. ZeroK features protocol-powered withdrawals where the protocol submits your transaction and covers all network fees automatically. A small 0.3% protocol fee is deducted from your withdrawal amount. The recipient wallet never needs any SOL — it can be completely empty.',
   },
 ];
 

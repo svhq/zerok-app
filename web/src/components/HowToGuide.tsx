@@ -4,17 +4,15 @@ interface HowToGuideProps {
 
 export default function HowToGuide({ mode }: HowToGuideProps) {
   const depositSteps = [
-    { title: 'Select vault', desc: 'Select denomination' },
-    { title: 'Set quantity', desc: 'How many notes' },
-    { title: 'Deposit', desc: 'Approve wallet tx' },
-    { title: 'Save notes', desc: 'Auto-downloads. Allow if prompted.' },
+    { title: 'Enter amount', desc: 'Any amount from 0.1 SOL' },
+    { title: 'Approve', desc: 'Single wallet popup' },
+    { title: 'Done', desc: 'Notes auto-saved to your wallet' },
   ];
 
   const withdrawSteps = [
-    { title: 'Import notes', desc: 'Drop or paste files' },
-    { title: 'Select notes', desc: 'Check to withdraw' },
+    { title: 'Connect wallet', desc: 'Notes appear automatically' },
     { title: 'Enter recipient', desc: 'Any wallet address' },
-    { title: 'Generate proof', desc: '~20-30 seconds' },
+    { title: 'Generate proof', desc: 'A few seconds' },
     { title: 'Confirm', desc: 'SOL sent to recipient' },
   ];
 

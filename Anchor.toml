@@ -1,0 +1,27 @@
+[features]
+seeds = true  # Enable runtime PDA validation for extra security
+skip-lint = false
+
+[programs.localnet]
+zerok = "JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx"
+zerok_v2 = "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v"
+zerok_v3 = "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v"
+
+[programs.devnet]
+zerok = "JCim8dPqwM16pfwQxFJHCzVA9HrG5Phdjen7PTC3dffx"
+zerok_v2 = "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v"
+zerok_v3 = "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v"
+
+[programs.mainnet]
+zerok_v2 = "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v"
+zerok_v3 = "HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

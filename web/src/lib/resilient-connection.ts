@@ -352,9 +352,10 @@ export function getEndpoints(): readonly string[] {
  */
 export function getScanEndpoint(): string {
   const endpoints = getNetworkEndpoints();
-  // Prefer Alchemy: best rate limits for parallel reads (25+ req/sec vs Helius free ~5 req/sec)
-  const alchemy = endpoints.find(e => e.includes('alchemy'));
-  if (alchemy) return alchemy;
+  // Prefer Helius (paid, supports sig.memo, high rate limits)
+  // Old logic preferred Alchemy but its free tier hits 429s on mainnet scans
+  const helius = endpoints.find(e => e.includes('helius'));
+  if (helius) return helius;
   // Fall back to any paid endpoint (skip free public Solana — low limits, no sig.memo)
   const FREE_PATTERNS = ['api.devnet.solana.com', 'api.testnet.solana.com', 'api.mainnet-beta.solana.com'];
   return endpoints.find(e => !FREE_PATTERNS.some(p => e.includes(p))) ?? endpoints[0];
