@@ -47,11 +47,11 @@ hex = "0.4"
 hex-literal = "0.4"
 # Zero-copy deserialization (required for large account structs)
 bytemuck = { version = "1.14", features = ["derive"] }
-# Light Protocol - Using local git repo for type consistency across all Light dependencies
-light-sdk = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["v2"] }
-light-hasher = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["solana", "poseidon"] }
-light-compressed-account = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["solana"] }
-light-macros = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["solana"] }
+# Light Protocol - pinned to specific commit for reproducible builds
+light-sdk = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58", features = ["v2"] }
+light-hasher = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58", features = ["solana", "poseidon"] }
+light-compressed-account = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58", features = ["solana"] }
+light-macros = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58", features = ["solana"] }
 borsh = "0.10"  # Match Light Protocol's version
 
 [dev-dependencies]
@@ -63,15 +63,15 @@ num-bigint = "0.4"
 solana-sdk = "2.3"
 solana-program-test = "2.3"
 solana-client = "2.3"
-# Light Protocol test framework - using git file:// to resolve workspace.dependencies correctly
-light-program-test = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["v2", "devenv"] }
-light-client = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["v2"] }
-# Light Protocol programs - using git file:// for workspace dependency resolution
-light-registry = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
-account-compression = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
-# Light Protocol program libs - using git file:// for workspace dependency resolution
-light-batched-merkle-tree = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
-light-test-utils = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol" }
-forester-utils = { git = "file:///home/jiaom/zerok_native/SPL_CMT/references/light-protocol", features = ["devenv"] }
+# Light Protocol test framework
+light-program-test = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58", features = ["v2", "devenv"] }
+light-client = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58", features = ["v2"] }
+# Light Protocol programs
+light-registry = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58" }
+account-compression = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58" }
+# Light Protocol program libs
+light-batched-merkle-tree = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58" }
+light-test-utils = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58" }
+forester-utils = { git = "https://github.com/Lightprotocol/light-protocol", rev = "f30d22b1769838b7db28d41d163ab8c748b3fb58", features = ["devenv"] }
 tokio = { version = "1", features = ["full" ]}
 rand = "0.8"
