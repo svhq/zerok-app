@@ -18,13 +18,15 @@
 
 import { Connection, PublicKey } from '@solana/web3.js';
 import { V2Note } from '@/types/note';
-import { tryDecryptV3Memo, MEMO_PREFIX_V3 } from './note-encryption';
-import { parseDepositEventFromLogs } from './deposit-event';
+import { tryDecryptV3Memo, tryDecryptV4BinaryMemo, tryDecryptV5SeedMemo, MEMO_PREFIX_V3, MEMO_PREFIX_V4, MEMO_PREFIX_V5 } from './note-encryption';
+import { parseDepositEventFromLogs, parseAllDepositEventsFromLogs } from './deposit-event';
 import {
   computeCommitmentFromBigInts,
+  bytesToFieldBE,
   fieldToBytesBE,
   initPoseidon,
   isRootInHistory,
+  computeRootFromPath,
 } from './sdk/poseidon';
 import {
   ScanCheckpoint,
@@ -154,23 +156,44 @@ export async function recoverFromPool(
 
   // Check if any sig has memo field populated (Helius/Alchemy do this, public RPCs don't)
   const memoSupported = allSigs.some(s => s.memo != null);
+  console.log(`[PoolRecovery] Memo support: ${memoSupported ? 'YES (fast path)' : 'NO (slow path, fetching txs)'}`);
 
   if (memoSupported) {
     // Fast path: use sig.memo to filter + decrypt without fetching full txs
     const v3Candidates = allSigs.filter(
-      s => s.memo != null && s.memo.includes(MEMO_PREFIX_V3)
+      s => s.memo != null && (s.memo.includes(MEMO_PREFIX_V3) || s.memo.includes(MEMO_PREFIX_V4) || s.memo.includes(MEMO_PREFIX_V5))
     );
+    console.log(`[PoolRecovery] Found ${v3Candidates.length} memo candidates (of ${allSigs.length} total sigs)`);
 
     for (const sig of v3Candidates) {
       const cleaned = cleanMemo(sig.memo!);
-      const payload = await tryDecryptV3Memo(cleaned, encryptionKey);
-      if (payload) {
-        ownDeposits.push({
-          signature: sig.signature,
-          nullifier: hexToDecimal(payload.n),
-          secret: hexToDecimal(payload.s),
-          denomination: payload.d,
-        });
+      if (cleaned.includes(MEMO_PREFIX_V5)) {
+        // V5 seed memo: one memo → N notes (batch-local indices 0..count-1)
+        const notes = await tryDecryptV5SeedMemo(cleaned, encryptionKey);
+        if (notes) {
+          console.log(`[PoolRecovery] V5 seed memo → ${notes.length} notes (sig=${sig.signature.slice(0, 16)}...)`);
+          for (const payload of notes) {
+            ownDeposits.push({
+              signature: sig.signature,
+              nullifier: hexToDecimal(payload.n),
+              secret: hexToDecimal(payload.s),
+              denomination: payload.d,
+            });
+          }
+        }
+      } else {
+        // V4 binary or V3 JSON: single note per memo
+        const payload = cleaned.includes(MEMO_PREFIX_V4)
+          ? await tryDecryptV4BinaryMemo(cleaned, encryptionKey)
+          : await tryDecryptV3Memo(cleaned, encryptionKey);
+        if (payload) {
+          ownDeposits.push({
+            signature: sig.signature,
+            nullifier: hexToDecimal(payload.n),
+            secret: hexToDecimal(payload.s),
+            denomination: payload.d,
+          });
+        }
       }
     }
   } else {
@@ -195,9 +218,26 @@ export async function recoverFromPool(
         if (!tx?.transaction?.message) continue;
 
         const memo = extractMemoFromTx(tx);
-        if (!memo || !memo.includes(MEMO_PREFIX_V3)) continue;
+        if (!memo || !(memo.includes(MEMO_PREFIX_V3) || memo.includes(MEMO_PREFIX_V4) || memo.includes(MEMO_PREFIX_V5))) continue;
 
-        const payload = await tryDecryptV3Memo(memo, encryptionKey);
+        if (memo.includes(MEMO_PREFIX_V5)) {
+          const notes = await tryDecryptV5SeedMemo(memo, encryptionKey);
+          if (notes) {
+            for (const payload of notes) {
+              ownDeposits.push({
+                signature: chunk[i].signature,
+                nullifier: hexToDecimal(payload.n),
+                secret: hexToDecimal(payload.s),
+                denomination: payload.d,
+              });
+            }
+          }
+          continue;
+        }
+
+        const payload = memo.includes(MEMO_PREFIX_V4)
+          ? await tryDecryptV4BinaryMemo(memo, encryptionKey)
+          : await tryDecryptV3Memo(memo, encryptionKey);
         if (payload) {
           ownDeposits.push({
             signature: chunk[i].signature,
@@ -224,67 +264,99 @@ export async function recoverFromPool(
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Phase 3: Fetch full transactions for OWN notes only (Merkle path data)
+  //
+  // V5 batch deposits put multiple deposit instructions in one tx, each emitting
+  // its own DepositProofData event. We parse ALL events and match each note to
+  // its event by cryptographic consistency: computeRootFromPath(commitment,
+  // event.siblings, event.positions) === event.rootAfter.
   // ═══════════════════════════════════════════════════════════════════════════
 
   let recovered: V2Note[] = [];
 
-  for (let b = 0; b < newDeposits.length; b += TX_FETCH_BATCH) {
-    const chunk = newDeposits.slice(b, b + TX_FETCH_BATCH);
+  // Deduplicate tx fetches: V5 batch notes share the same signature
+  const notesBySig = new Map<string, Array<{ nullifier: string; secret: string; denomination: string; signature: string }>>();
+  for (const dep of newDeposits) {
+    if (!notesBySig.has(dep.signature)) notesBySig.set(dep.signature, []);
+    notesBySig.get(dep.signature)!.push(dep);
+  }
+
+  // Fetch each unique tx once, then match notes to events
+  const uniqueSigs = [...notesBySig.keys()];
+  for (let b = 0; b < uniqueSigs.length; b += TX_FETCH_BATCH) {
+    const sigChunk = uniqueSigs.slice(b, b + TX_FETCH_BATCH);
     const txs = await Promise.all(
-      chunk.map(d =>
-        scanConn.getTransaction(d.signature, {
+      sigChunk.map(sig =>
+        scanConn.getTransaction(sig, {
           maxSupportedTransactionVersion: 0,
           commitment: 'confirmed',
         }).catch(() => null)
       )
     );
 
-    for (let i = 0; i < chunk.length; i++) {
+    for (let t = 0; t < sigChunk.length; t++) {
+      const sig = sigChunk[t];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tx = txs[i] as any;
-      const dep = chunk[i];
+      const tx = txs[t] as any;
+      const sigNotes = notesBySig.get(sig)!;
 
-      // Compute commitment + nullifierHash
-      const nullBigInt = BigInt(dep.nullifier);
-      const secBigInt = BigInt(dep.secret);
-      const { commitment, nullifierHash } = await computeCommitmentFromBigInts(nullBigInt, secBigInt);
-      const commitmentHex = Array.from(commitment).map(x => x.toString(16).padStart(2, '0')).join('');
-      const nullifierHashHex = Array.from(nullifierHash).map(x => x.toString(16).padStart(2, '0')).join('');
+      // Parse ALL deposit events from this tx (may be 1 for single deposits, N for V5 batches)
+      const allEvents = tx?.meta?.logMessages
+        ? parseAllDepositEventsFromLogs(tx.meta.logMessages)
+        : [];
 
-      // Parse DepositProofData from tx logs (V3 = V1-style event)
-      let leafIndex = -1;
-      let merkleRoot = '';
-      const siblings: string[] = [];
-      const positions: number[] = [];
+      for (const dep of sigNotes) {
+        const nullBigInt = BigInt(dep.nullifier);
+        const secBigInt = BigInt(dep.secret);
+        const { commitment, nullifierHash } = await computeCommitmentFromBigInts(nullBigInt, secBigInt);
+        const commitmentHex = Array.from(commitment).map((x: number) => x.toString(16).padStart(2, '0')).join('');
+        const nullifierHashHex = Array.from(nullifierHash).map((x: number) => x.toString(16).padStart(2, '0')).join('');
 
-      if (tx?.meta?.logMessages) {
-        const event = parseDepositEventFromLogs(tx.meta.logMessages);
-        if (event) {
-          leafIndex = event.leafIndex;
-          merkleRoot = event.rootAfter;
-          for (let s = 0; s < event.siblings.length; s++) {
-            siblings.push(event.siblings[s]);
-            positions.push(event.positions[s]);
+        // Match this note to its event by cryptographic consistency:
+        // Find the event where computeRootFromPath(commitment, siblings, positions) === rootAfter
+        let leafIndex = -1;
+        let merkleRoot = '';
+        let siblings: string[] = [];
+        let positions: number[] = [];
+
+        const commitBigInt = bytesToFieldBE(commitment);
+        for (const event of allEvents) {
+          const computedRoot = await computeRootFromPath(commitBigInt, event.siblings, event.positions);
+          const normalizedEventRoot = event.rootAfter.replace(/^0x/, '');
+          if (computedRoot === normalizedEventRoot) {
+            leafIndex = event.leafIndex;
+            merkleRoot = event.rootAfter;
+            siblings = [...event.siblings];
+            positions = [...event.positions];
+            break;
           }
         }
-      }
 
-      recovered.push({
-        id: commitmentHex,
-        amount: dep.denomination,
-        nullifier: dep.nullifier,
-        secret: dep.secret,
-        commitment: commitmentHex,
-        nullifierHash: nullifierHashHex,
-        leafIndex,
-        merkleRoot,
-        pathElements: siblings,
-        pathIndices: positions,
-        status: 'unspent',
-        depositTx: dep.signature,
-        createdAt: new Date().toISOString(),
-        noteVersion: 3,
-      });
+        if (leafIndex === -1 && allEvents.length === 1) {
+          // Fallback for single-deposit txs (V3/V4): use the only event
+          const event = allEvents[0];
+          leafIndex = event.leafIndex;
+          merkleRoot = event.rootAfter;
+          siblings = [...event.siblings];
+          positions = [...event.positions];
+        }
+
+        recovered.push({
+          id: commitmentHex,
+          amount: dep.denomination,
+          nullifier: dep.nullifier,
+          secret: dep.secret,
+          commitment: commitmentHex,
+          nullifierHash: nullifierHashHex,
+          leafIndex,
+          merkleRoot,
+          pathElements: siblings,
+          pathIndices: positions,
+          status: 'unspent',
+          depositTx: sig,
+          createdAt: new Date().toISOString(),
+          noteVersion: 3,
+        });
+      }
     }
   }
 
@@ -383,7 +455,7 @@ function extractMemoFromTx(tx: any): string | null {
     const text = typeof ix.data === 'string'
       ? Buffer.from(ix.data, 'base64').toString('utf8')
       : Buffer.from(ix.data).toString('utf8');
-    if (text.includes(MEMO_PREFIX_V3)) return text;
+    if (text.includes(MEMO_PREFIX_V3) || text.includes(MEMO_PREFIX_V4) || text.includes(MEMO_PREFIX_V5)) return text;
   }
   return null;
 }

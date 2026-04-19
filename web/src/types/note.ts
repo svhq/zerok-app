@@ -76,4 +76,6 @@ export interface PoolConfig {
   allocatedShards?: number;
   // Protocol version — 'v1' = fixed denomination, 'v2' = arbitrary amount JoinSplit
   version?: 'v1' | 'v2';
+  // Address Lookup Table for V0 VersionedTransaction batching
+  altAddress?: string;
 }

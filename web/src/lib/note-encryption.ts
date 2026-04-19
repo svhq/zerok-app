@@ -133,6 +133,8 @@ export const MEMO_PREFIX = 'zerok:v1:';
 export const MEMO_PREFIX_V2 = 'zerok:v2:';
 export const MEMO_PREFIX_BATCH = 'zerok:v2:b:';
 export const MEMO_PREFIX_V3 = 'zerok:v3:';
+export const MEMO_PREFIX_V4 = 'zerok:v4:';
+export const MEMO_PREFIX_V5 = 'zerok:v5:';
 
 /**
  * Encrypt a compact note payload for embedding in a Solana Memo instruction.
@@ -213,6 +215,230 @@ export async function tryDecryptV3Memo(memo: string, key: CryptoKey): Promise<V3
     return null;
   } catch {
     return null; // wrong key or corrupt — expected for other users' notes
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V4 Binary Memo: compact encoding — 145 bytes vs V3's 256 bytes (44% smaller)
+//
+// Plaintext: [denom u64 LE (8)] [nullifier BE (32)] [secret BE (32)] = 72 bytes
+// Wire:      "zerok:v4:" + base64( IV(12) + AES-GCM(72 bytes) + tag(16) ) = 145 bytes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Convert a bigint to a 32-byte big-endian Uint8Array (zero-padded). */
+function bigintToBE32(val: bigint): Uint8Array {
+  const hex = val.toString(16).padStart(64, '0');
+  const bytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return bytes;
+}
+
+/** Read a 32-byte big-endian Uint8Array as a hex string (for V3MemoPayload compat). */
+function be32ToHex(bytes: Uint8Array): string {
+  let hex = '';
+  for (let i = 0; i < 32; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
+}
+
+/**
+ * Encrypt a V4 binary memo: 72-byte plaintext → 145-byte memo string.
+ * 44% smaller than V3 JSON encoding (256 bytes).
+ */
+export async function encryptV4BinaryMemo(
+  key: CryptoKey,
+  denom: bigint,
+  nullifier: bigint,
+  secret: bigint,
+): Promise<string> {
+  // Build 72-byte plaintext: [8B denom LE] [32B nullifier BE] [32B secret BE]
+  const plaintext = new Uint8Array(72);
+  const view = new DataView(plaintext.buffer);
+  view.setBigUint64(0, denom, true); // little-endian
+  plaintext.set(bigintToBE32(nullifier), 8);
+  plaintext.set(bigintToBE32(secret), 40);
+
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    plaintext.buffer as ArrayBuffer,
+  );
+  const combined = new Uint8Array(12 + ct.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ct), 12);
+  return MEMO_PREFIX_V4 + btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * Try to decrypt a V4 binary memo. Returns V3MemoPayload shape for compatibility.
+ * Returns null silently on wrong key or corrupt data.
+ */
+export async function tryDecryptV4BinaryMemo(memo: string, key: CryptoKey): Promise<V3MemoPayload | null> {
+  const blob = memo.startsWith(MEMO_PREFIX_V4) ? memo.slice(MEMO_PREFIX_V4.length) : memo;
+  try {
+    const bytes = Uint8Array.from(atob(blob), c => c.charCodeAt(0));
+    const iv = bytes.slice(0, 12);
+    const ciphertext = bytes.slice(12);
+    const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    const plain = new Uint8Array(plainBuf);
+    if (plain.length !== 72) return null; // sanity: must be exactly 72 bytes
+    const view = new DataView(plain.buffer, plain.byteOffset, plain.byteLength);
+    const d = view.getBigUint64(0, true).toString();
+    const n = be32ToHex(plain.slice(8, 40));
+    const s = be32ToHex(plain.slice(40, 72));
+    return { d, n, s, v: 4 };
+  } catch {
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V5 Seed Memo: one seed per batch → derive all note secrets deterministically
+//
+// Instead of encrypting N separate note payloads (V4: 145 bytes each),
+// store ONE batch seed + denomination list. Recovery re-derives secrets.
+//
+// Plaintext: [32B batchSeed] [1B count] [count × 8B denom LE] = 33 + 8N bytes
+// Wire:      "zerok:v5:" + base64(IV(12) + AES-GCM(plaintext) + tag(16))
+//
+// For 6 notes: 81B plain → 109B enc → 148B b64 → 157B wire (vs 6 × 145 = 870B with V4)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BN254_P = BigInt('21888242871839275222246405745257275088696311157297823662689037894645226208583');
+
+/** 32-byte BE → BigInt */
+function bytesToBigIntBE(bytes: Uint8Array): bigint {
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return BigInt('0x' + hex);
+}
+
+/**
+ * Derive nullifier and secret for note at `index` from a batch seed.
+ * Uses Web Crypto SHA-256 with versioned domain tags for unambiguous derivation.
+ *
+ * Domain tags: "zerok:v5:nullifier" and "zerok:v5:secret" — versioned so
+ * derivation namespace remains unambiguous if V6 ever changes the scheme.
+ *
+ * @param seed  - 32 bytes, random per BATCH (not per deposit)
+ * @param index - 0-based note index WITHIN this batch (always 0..count-1)
+ */
+export async function deriveNoteFromSeed(
+  seed: Uint8Array,
+  index: number,
+): Promise<{ nullifier: bigint; secret: bigint }> {
+  const nTag = new TextEncoder().encode('zerok:v5:nullifier');
+  const nInput = new Uint8Array(nTag.length + 32 + 1);
+  nInput.set(nTag, 0);
+  nInput.set(seed, nTag.length);
+  nInput[nTag.length + 32] = index;
+  const nHash = new Uint8Array(await crypto.subtle.digest('SHA-256', nInput));
+
+  const sTag = new TextEncoder().encode('zerok:v5:secret');
+  const sInput = new Uint8Array(sTag.length + 32 + 1);
+  sInput.set(sTag, 0);
+  sInput.set(seed, sTag.length);
+  sInput[sTag.length + 32] = index;
+  const sHash = new Uint8Array(await crypto.subtle.digest('SHA-256', sInput));
+
+  const nullifier = bytesToBigIntBE(nHash) % BN254_P;
+  const secret = bytesToBigIntBE(sHash) % BN254_P;
+  return { nullifier, secret };
+}
+
+/**
+ * Encrypt a V5 seed memo: ONE memo per batch, any number of notes.
+ * Each batch generates its own independent seed — no cross-batch coupling.
+ *
+ * Plaintext layout:
+ *   [32B batchSeed] [1B count] [4B programId prefix] [count × 8B denom LE]
+ *   = 37 + 8N bytes
+ *
+ * The 4-byte programId prefix binds the memo to a specific program/environment,
+ * preventing cross-program recovery confusion (devnet vs mainnet, old vs new program).
+ *
+ * IMPORTANT: Batch note order is the original greedySplit order and MUST NEVER be
+ * re-sorted. Index 0,1,2... is part of the cryptographic derivation identity.
+ */
+export async function encryptV5SeedMemo(
+  key: CryptoKey,
+  seed: Uint8Array,
+  denominations: bigint[],
+  programIdBytes: Uint8Array,
+): Promise<string> {
+  const count = denominations.length;
+  const plaintext = new Uint8Array(37 + count * 8);
+  plaintext.set(seed, 0);
+  plaintext[32] = count;
+  plaintext.set(programIdBytes.slice(0, 4), 33); // first 4 bytes of programId
+  const view = new DataView(plaintext.buffer);
+  for (let i = 0; i < count; i++) {
+    view.setBigUint64(37 + i * 8, denominations[i], true);
+  }
+
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    plaintext.buffer as ArrayBuffer,
+  );
+  const combined = new Uint8Array(12 + ct.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(ct), 12);
+  return MEMO_PREFIX_V5 + btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * Decrypt a V5 seed memo → array of V3MemoPayload-compatible entries.
+ * Re-derives nullifier/secret from seed using batch-local indices (0..count-1).
+ *
+ * If expectedProgramPrefix is provided, verifies the memo's context matches.
+ * Returns null silently on wrong key, corrupt data, or context mismatch.
+ */
+export async function tryDecryptV5SeedMemo(
+  memo: string,
+  key: CryptoKey,
+  expectedProgramPrefix?: Uint8Array,
+): Promise<Array<{ d: string; n: string; s: string; v: number }> | null> {
+  const blob = memo.startsWith(MEMO_PREFIX_V5) ? memo.slice(MEMO_PREFIX_V5.length) : memo;
+  try {
+    const bytes = Uint8Array.from(atob(blob), c => c.charCodeAt(0));
+    const iv = bytes.slice(0, 12);
+    const ciphertext = bytes.slice(12);
+    const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    const plain = new Uint8Array(plainBuf);
+    if (plain.length < 37) return null;
+
+    const seed = plain.slice(0, 32);
+    const count = plain[32];
+    const progPrefix = plain.slice(33, 37);
+    if (plain.length < 37 + count * 8) return null;
+
+    // Verify context if expected prefix provided
+    if (expectedProgramPrefix) {
+      const expected = expectedProgramPrefix.slice(0, 4);
+      if (progPrefix[0] !== expected[0] || progPrefix[1] !== expected[1] ||
+          progPrefix[2] !== expected[2] || progPrefix[3] !== expected[3]) {
+        return null; // context mismatch — wrong program
+      }
+    }
+
+    const view = new DataView(plain.buffer, plain.byteOffset, plain.byteLength);
+    const results: Array<{ d: string; n: string; s: string; v: number }> = [];
+
+    for (let i = 0; i < count; i++) {
+      const denom = view.getBigUint64(37 + i * 8, true).toString();
+      const { nullifier, secret } = await deriveNoteFromSeed(seed, i);
+      results.push({
+        d: denom,
+        n: bigintToBE32(nullifier).reduce((h: string, b: number) => h + b.toString(16).padStart(2, '0'), ''),
+        s: bigintToBE32(secret).reduce((h: string, b: number) => h + b.toString(16).padStart(2, '0'), ''),
+        v: 5,
+      });
+    }
+    return results;
+  } catch {
+    return null;
   }
 }
 

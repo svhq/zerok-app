@@ -89,6 +89,45 @@ export function parseDepositEventFromLogs(logs: string[]): DepositEventData | nu
 }
 
 /**
+ * Parse ALL DepositProofData events from transaction logs.
+ * V5 batch deposits emit one event per deposit instruction — a 6-note batch has 6 events.
+ * Unlike parseDepositEventFromLogs (which returns only the first), this returns all of them.
+ */
+export function parseAllDepositEventsFromLogs(logs: string[]): DepositEventData[] {
+  const events: DepositEventData[] = [];
+  for (const log of logs) {
+    if (!log.includes('Program data:')) continue;
+    const parts = log.split('Program data: ');
+    if (parts.length < 2) continue;
+    try {
+      const base64 = parts[1];
+      const binaryString = atob(base64);
+      const data = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) data[i] = binaryString.charCodeAt(i);
+
+      const expectedSize = 8 + 4 + 32 + 640 + 20;
+      if (data.length < expectedSize) continue;
+
+      let offset = 8;
+      const leafIndex = data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24);
+      offset += 4;
+      const rootAfter = '0x' + Array.from(data.slice(offset, offset + 32)).map(b => b.toString(16).padStart(2, '0')).join('');
+      offset += 32;
+      const siblings: string[] = [];
+      for (let i = 0; i < 20; i++) {
+        siblings.push('0x' + Array.from(data.slice(offset, offset + 32)).map(b => b.toString(16).padStart(2, '0')).join(''));
+        offset += 32;
+      }
+      const positions: number[] = [];
+      for (let i = 0; i < 20; i++) positions.push(data[offset + i]);
+
+      events.push({ leafIndex, rootAfter, siblings, positions });
+    } catch { continue; }
+  }
+  return events;
+}
+
+/**
  * Random jitter to prevent thundering herd on RPC endpoints
  * Ported from CLI: deposit.js line 575-576
  */

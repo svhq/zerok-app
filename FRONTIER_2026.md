@@ -16,7 +16,11 @@ Phantom wallet's Blowfish security scanner blocked ZeroK deposits on mainnet. We
 
 **Details**: [WEEKLY_UPDATES/week1.md](WEEKLY_UPDATES/week1.md)
 
-### Week 2 — _Coming soon_
+### Week 2 — Three-Layer Note Recovery
+
+We built a defense-in-depth recovery system so users never lose access to their private funds. Three independent layers: local cache (instant), on-chain encrypted memos (cross-device), and downloadable note files (offline backup). Your wallet is your recovery key.
+
+**Details**: [WEEKLY_UPDATES/week2.md](WEEKLY_UPDATES/week2.md)
 
 ### Week 3 — _Coming soon_
 
