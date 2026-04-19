@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "programs/*"
+    "programs/zerok_v3"
 ]
 resolver = "2"
 
