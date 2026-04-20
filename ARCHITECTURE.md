@@ -89,6 +89,54 @@ V2 used `signAllTransactions` + `sendRawTransaction` for multi-note deposits —
 
 Result: zero Phantom warnings on mainnet. A 20 SOL deposit fits in a single wallet popup.
 
+## Any-Amount Deposits via Greedy Splitting
+
+Privacy pools require fixed denominations — every deposit in a pool must look identical on-chain, otherwise an observer could match withdrawals to deposits by amount. This creates a UX problem: users should not have to manually pick "1 SOL or 10 SOL?"
+
+ZeroK solves this with a greedy decomposition. The user enters any amount; the client computes the optimal set of denomination pieces and packs them into a single batch deposit instruction:
+
+```javascript
+// sdk/v2-core/planner.js
+function greedySplit(lamports, availableDenoms) {
+  const denoms = availableDenoms || DENOMINATIONS;  // [1000, 100, 10, 1, 0.1] SOL
+  const steps = [];
+  let remaining = BigInt(lamports);
+  for (const d of denoms) {
+    while (remaining >= d) { steps.push(d); remaining -= d; }
+  }
+  return steps;
+}
+```
+
+`2.3 SOL → [2×1 SOL, 3×0.1 SOL]` → batched into one on-chain instruction → one wallet popup. The fixed-denomination privacy guarantee is preserved — each commitment is indistinguishable from any other in its pool — while the UX collapses to a single number input.
+
+Withdrawals use `planWithdrawal()` in the same file, which runs two decomposition strategies (greedy vs inventory-aware) and picks whichever minimizes total transactions. This is critical when users hold a mix of denominations and need to break larger notes into smaller ones via the re-denomination circuit.
+
+The entire `sdk/v2-core/` module is pure math with no environment dependencies — the same 11 files run in the browser (via webpack alias `v2-core → sdk/v2-core/`) and in CLI scripts.
+
+## JoinSplit — 1-in-1-out with Private Change Notes
+
+The V2 design extends the deposit primitive to support arbitrary-amount withdrawals without redenom cascades.
+
+**V3 (production, fixed-denomination)**:
+```
+commitment = Poseidon(2)(nullifier, secret)
+```
+Every commitment in a pool is the same denomination. Withdrawals consume a whole note.
+
+**V2 (JoinSplit, on the roadmap)**:
+```
+commitment = Poseidon(3)(amount, nullifier, secret)
+```
+A withdrawal can consume a commitment of amount `N` and insert a change commitment of amount `N - withdrawn - fee` back into the pool. The change note is privately owned by the user; observers see a normal deposit/withdrawal, not a link.
+
+The JoinSplit circuit (`circuits/v2/withdraw.circom`) enforces the balance constraint:
+```
+amount_in = amount_to_recipient + amount_change + fee
+```
+
+V3 is the active mainnet program because the simpler fixed-denomination model has lower on-chain verification cost and is easier to audit. JoinSplit is production-tested on devnet (see [`programs/zerok_v2/README.md`](programs/zerok_v2/README.md)) and remains the path to true arbitrary-amount withdrawals.
+
 ## Protocol-Powered Withdrawals
 
 ZeroK uses a protocol-powered withdrawal mechanism to preserve recipient privacy. Here is how it works:

@@ -1,0 +1,6 @@
+{
+  "name": "v2-core",
+  "version": "1.0.0",
+  "private": true,
+  "main": "constants.js"
+}
