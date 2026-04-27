@@ -69,6 +69,8 @@ zerok-app/
 │   ├── zerok/         — V1 program interface (IDL, retired)
 │   ├── zerok_v2/      — V2 program interface (IDL, retired)
 │   └── zerok_v3/      — V3 program interface (IDL, current mainnet)
+├── relay/             — Protocol-paid withdrawal relay (gasless for recipient)
+├── sdk/v2-core/       — Shared protocol math (browser + CLI)
 ├── web/               — Frontend application (Next.js)
 ├── docs-site/         — Documentation site (Nextra)
 ├── ARCHITECTURE.md    — Technical architecture details
@@ -85,6 +87,8 @@ zerok-app/
 | `programs/zerok/idl/` | V1 program interface (Anchor IDL, retired) | Open source |
 | `programs/zerok_v2/idl/` | V2 program interface (Anchor IDL, retired) | Open source |
 | `programs/zerok_v3/idl/` | V3 program interface (Anchor IDL, current mainnet) | Open source |
+| `relay/` | Protocol-paid withdrawal relay — stateless, no DB, no indexer | Open source |
+| `sdk/v2-core/` | Shared protocol math (greedy split, planner, witness, fee, Merkle) | Open source |
 | `web/` | Frontend application built with Next.js | Open source |
 | `docs-site/` | Documentation site powered by Nextra | Open source |
 

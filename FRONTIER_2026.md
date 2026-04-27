@@ -22,7 +22,11 @@ Users type any amount — `2.3 SOL` — and the app greedy-splits it into privac
 
 **Details**: [WEEKLY_UPDATES/week2.md](WEEKLY_UPDATES/week2.md)
 
-### Week 3 — _Coming soon_
+### Week 3 — Reliability: Wallet Recovery, Gasless Withdrawals, Pipelined Proofs
+
+A privacy protocol is only as good as its worst-case experience. Week 3 ships three reliability layers, all live on mainnet: pool-PDA scan recovery (your wallet is your key on any device), gasless protocol-paid withdrawals (recipient never needs SOL), and pipelined proof+relay submission (37% faster multi-note withdrawals — measured 44s → 27.5s for 9 notes).
+
+**Details**: [WEEKLY_UPDATES/week3.md](WEEKLY_UPDATES/week3.md) · **Relay**: [relay/server.js](relay/server.js)
 
 ### Week 4 — _Coming soon_
 
@@ -37,6 +41,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a full technical overview of how Zero
 ```bash
 # Frontend
 cd web && npm install && npm run dev
+
+# Relay (gasless protocol-paid withdrawal service)
+cd relay && cp .env.example .env  # fill in env vars
+npm install && npm start
 
 # Circuits (proof generation artifacts)
 cd circuits && npm install

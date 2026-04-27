@@ -148,6 +148,16 @@ ZeroK uses a protocol-powered withdrawal mechanism to preserve recipient privacy
 
 This design means the recipient wallet never needs to hold SOL to pay for gas. A completely fresh, empty wallet can receive a withdrawal — eliminating a common privacy leak where users must fund recipient wallets from identifiable sources before withdrawing.
 
+The relay implementation is published in [`relay/server.js`](relay/server.js) — stateless, replay-protected, and no database. Anyone can run it; the on-chain program treats every relay-submitted transaction identically to one a user would self-submit.
+
+## Reliability Layer
+
+Three concerns make a privacy protocol survivable in production:
+
+- **Recovery on any device.** Encrypted note seeds ride inside each deposit's Memo instruction (AES-256-GCM keyed by the user's wallet signature). Reconnecting the same wallet on any browser, any device, scans the pool's state PDA, decrypts the memos addressable by that wallet, and rebuilds the user's private balance. Recovery is checkpointed and idempotent — the second reconnect on the same machine is near-instant.
+- **Gasless to the recipient.** The protocol relay pays all network fees and nullifier-PDA rent, so a fresh-no-history recipient address remains exactly that.
+- **Pipelined multi-note withdrawals.** Proof generation (CPU-bound) and relay submission (network-bound) run on overlapping timelines, with a 2-wide relay queue. Measured 37% faster end-to-end on a 9-note mainnet withdrawal.
+
 ## Non-Custodial Design
 
 ZeroK is fully non-custodial:

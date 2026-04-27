@@ -1,0 +1,22 @@
+{
+  "name": "zerok-relay",
+  "version": "1.0.0",
+  "description": "Stateless relay service for zerok-solana private withdrawals - no indexer, no database, no catch-up",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@solana/web3.js": "^1.95.0",
+    "bs58": "^6.0.0",
+    "fastify": "^4.28.0",
+    "pino-pretty": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}
