@@ -5,7 +5,7 @@ Privacy primitives for AI agents on Solana.
 Four methods. The same primitives a human gets in the web app.
 
 ```js
-const { ZeroK } = require('zerok-sdk-agent');
+const { ZeroK } = require('zerok-agent');
 const zk = new ZeroK({ network: 'mainnet-beta', wallet: keypair });
 
 await zk.recover();                  // reattach to your notes (any device)
@@ -21,11 +21,12 @@ Targets the live V3 mainnet program (`HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS
 ## Install
 
 ```bash
-npm install @solana/web3.js circomlibjs snarkjs tweetnacl
-# (this SDK is currently in-tree at sdk/agent — published package coming)
+npm install zerok-agent
 ```
 
-You also need the V1-style proving key + WASM at `circuits/build/withdraw_fixed_js/withdraw_fixed.wasm` and `circuits/build/withdraw_final.zkey` (~12MB). See `circuits/README.md`.
+The package bundles the proving key + WASM circuit artifacts (~7 MB), so no separate circuit build step is required. Node 18+.
+
+[![npm version](https://img.shields.io/npm/v/zerok-agent.svg)](https://www.npmjs.com/package/zerok-agent) · [npmjs.com/package/zerok-agent](https://www.npmjs.com/package/zerok-agent)
 
 ---
 

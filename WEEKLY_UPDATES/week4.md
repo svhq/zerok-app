@@ -1,5 +1,7 @@
 # Week 4: Privacy, Optimized for AI Agents
 
+> **Update (2026-05-01):** the SDK is now published to npm as [`zerok-agent`](https://www.npmjs.com/package/zerok-agent). Install in any agent project with `npm install zerok-agent` — same install pattern as Solana Agent Kit, Coinbase AgentKit, and every other agent SDK. The package bundles the ZK circuit artifacts (~7 MB) so there's no separate build step.
+
 ## Theme
 
 A privacy primitive that's only callable from a wallet popup is barely a primitive at all. Week 4 makes ZeroK directly usable by autonomous AI agents — the same protocol a human uses on app.zerok.app, exposed as a four-method JavaScript SDK with the ergonomics agents actually need: structured errors, idempotency keys, two-layer persistence, and on-chain recovery from any device.

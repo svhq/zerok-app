@@ -19,14 +19,14 @@ ZeroK breaks the on-chain link between sender and recipient with a zero-knowledg
 ## Quickstart
 
 ```bash
-# In your agent's project — the SDK lives in the public hackathon repo for now.
-git clone https://github.com/svhq/zerok-app.git
-cd zerok-app && npm install
+npm install zerok-agent
 ```
+
+That's it. The package bundles the ZK circuit artifacts (~7 MB) so there's no separate build step.
 
 ```javascript
 const { Keypair } = require('@solana/web3.js');
-const { ZeroK } = require('./zerok-app/sdk/agent');
+const { ZeroK } = require('zerok-agent');
 
 // 1. Construct — disk-cached notes auto-load instantly
 const zk = new ZeroK({
