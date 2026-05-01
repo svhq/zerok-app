@@ -1,0 +1,217 @@
+import { Callout } from 'nextra/components'
+
+# For AI Agents
+
+Privacy primitives for autonomous agents on Solana. Same protocol a human uses on [app.zerok.app](https://app.zerok.app), exposed as a four-method JavaScript SDK.
+
+## Why agents need privacy
+
+- **Spending patterns are public.** Every SOL transfer on Solana is visible. If your agent pays for compute, APIs, training data, or settles between accounts, anyone watching the chain can see what it's buying and from whom.
+- **Competitors front-run visible strategy.** Treasury moves, vendor relationships, supplier costs — all readable.
+- **Agents act on behalf of users.** A user's privacy budget shouldn't drain the moment they delegate a task to an agent.
+
+ZeroK breaks the on-chain link between sender and recipient with a zero-knowledge mixer. Deposit SOL into a shared privacy pool, then withdraw to *any* address — the recipient has no provable link to the depositor.
+
+<Callout type="info">
+  Live on Solana mainnet. Program ID `HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v`. Five denominations: 0.1, 1, 10, 100, 1000 SOL.
+</Callout>
+
+## Quickstart
+
+```bash
+# In your agent's project — the SDK lives in the public hackathon repo for now.
+git clone https://github.com/svhq/zerok-app.git
+cd zerok-app && npm install
+```
+
+```javascript
+const { Keypair } = require('@solana/web3.js');
+const { ZeroK } = require('./zerok-app/sdk/agent');
+
+// 1. Construct — disk-cached notes auto-load instantly
+const zk = new ZeroK({
+  network: 'mainnet-beta',
+  wallet: Keypair.fromSecretKey(/* your agent's secret bytes */),
+  rpc: 'https://mainnet.helius-rpc.com/?api-key=YOUR_KEY',
+});
+
+// 2. (On a fresh container) Rebuild note state from on-chain
+await zk.recover();
+
+// 3. Deposit — auto-splits into optimal denominations
+await zk.deposit(2.3);
+// → 2×1 SOL + 3×0.1 SOL, returns { notes, denominations, signatures }
+
+// 4. Send privately — gasless for the recipient
+await zk.send(1.0, 'RecipientAddress...');
+// → recipient gets 0.997 SOL, your wallet has no on-chain link to them
+
+// 5. Check balance — synchronous, no RPC call
+zk.balance();
+// → { total: 1.3, notes: 4, breakdown: { '1 SOL': 1, '0.1 SOL': 3 } }
+```
+
+Four methods. The same primitives a Phantom user gets, exposed programmatically.
+
+## API reference
+
+### `new ZeroK({ network, wallet, rpc?, relay?, notesDir? })`
+
+| Option | Type | Notes |
+|---|---|---|
+| `network` | `'mainnet-beta' \| 'devnet'` | V3 is live on mainnet. |
+| `wallet` | `Keypair` | The agent's Solana keypair. |
+| `rpc` | `string` (optional) | **Use a paid RPC** (Helius/Alchemy). Public mainnet rate-limits hard. |
+| `relay` | `string` (optional) | Override the protocol relay URL. |
+| `notesDir` | `string` (optional) | Where to persist notes on disk. Default `./notes`. |
+
+### `await zk.deposit(solAmount, opts?)`
+
+Deposits SOL into private pools. Greedy-splits the amount across deployed denominations. Each note is saved to disk *before* its tx is sent — fund-safety invariant.
+
+```javascript
+const { notes, denominations, signatures } = await zk.deposit(2.3);
+// → { notes: 5, denominations: ['1 SOL','1 SOL','0.1 SOL','0.1 SOL','0.1 SOL'], signatures: [...] }
+```
+
+`opts.idempotencyKey` (optional): retry-safe key. See [Idempotency](#idempotency).
+
+### `await zk.send(solAmount, recipient, opts?)`
+
+Sends SOL privately via the gasless protocol relay. Auto-selects unspent notes (greedy largest-first), generates one Groth16 proof per note, POSTs to `/v3/withdraw`. The relay pays gas and nullifier rent and retains the fee.
+
+```javascript
+const { sent, fee, signatures } = await zk.send(1.0, 'RecipientPubkey...');
+// → { sent: 1, fee: 0.003, signatures: [...] }
+```
+
+Fee: `max(30 bps, 2_000_000 lamports)` per note. For 1 SOL: 0.003 SOL fee → recipient gets 0.997 SOL. For 0.1 SOL: 0.002 SOL minimum fee → recipient gets 0.098 SOL.
+
+### `zk.balance()`
+
+Synchronous local-cache balance — no RPC call. Reflects notes loaded from disk on construction plus any deposited or recovered this session.
+
+```javascript
+zk.balance();
+// → { total: 2.3, notes: 5, breakdown: { '1 SOL': 2, '0.1 SOL': 3 } }
+```
+
+### `await zk.recover()`
+
+Rebuild note state from on-chain. Same wallet → same notes, on any device.
+
+```javascript
+const { recovered, notes } = await zk.recover();
+```
+
+How it works: scans each pool's state-PDA signature history (bounded, ZeroK-only — *not* your wallet's history), filters by `zerok:v3:` memo prefix, AES-GCM-decrypts each candidate with your wallet-derived key, parses the `DepositProofData` event for the Merkle path, and checks each nullifier PDA for spent status. Per-pool checkpoints persist so subsequent recoveries are incremental.
+
+## Two-layer persistence
+
+The SDK mirrors the website's persistence model:
+
+| Layer | What | When loaded | Equivalent on app.zerok.app |
+|---|---|---|---|
+| **Disk cache** | Note JSON files in `notesDir` | Auto-loaded on `new ZeroK({...})` — synchronous, no network | `localStorage` |
+| **On-chain** | Encrypted `zerok:v3:` memo embedded in every deposit tx | `await zk.recover()` — scans pool state PDAs | Pool-PDA scan recovery |
+
+Layer 1 gives the agent **instant balance** on restart with zero RPC calls. Layer 2 is the canonical source — the encrypted memo lives on-chain inside the deposit tx itself, only your wallet's signature can decrypt it. Same wallet, fresh container, same notes.
+
+<Callout type="info">
+  Fund safety during deposit: a `pending_NNNNN_<timestamp>.json` file is written to disk *before* the tx is sent, then upgraded to `note_NNNNN.json` after confirmation. The encrypted memo is also embedded on-chain. If anything fails mid-flight, both layers independently hold enough state to reconstruct the note.
+</Callout>
+
+## Structured errors
+
+Every thrown error is a `ZeroKError` with `.code` and `.actionable`. Agents route on `e.code`:
+
+```javascript
+const { ZeroKError } = require('./zerok-app/sdk/agent');
+
+try { await zk.send(1.0, recipient); }
+catch (e) {
+  if (e instanceof ZeroKError) {
+    if (e.code === 'INSUFFICIENT_BALANCE') return zk.deposit(1).then(() => zk.send(1, recipient));
+    if (e.code === 'NULLIFIER_ALREADY_SPENT') { /* mark spent locally, retry */ }
+    if (e.code === 'RELAY_UNAVAILABLE') { /* exponential backoff, the proof is reusable */ }
+    if (e.code === 'NOTE_STALE') return zk.recover().then(() => zk.send(...));
+  }
+}
+```
+
+Common codes: `BAD_SIGNER`, `BAD_AMOUNT`, `BAD_RECIPIENT`, `INSUFFICIENT_BALANCE`, `INSUFFICIENT_WALLET_SOL`, `DEPOSIT_FAILED`, `NULLIFIER_ALREADY_SPENT`, `NOTE_STALE`, `FEE_REJECTED`, `RELAY_UNAVAILABLE`, `RELAY_REJECTED`, `CIRCUIT_MISSING`. Full table in the [SDK README](https://github.com/svhq/zerok-app/blob/main/sdk/agent/README.md).
+
+## Idempotency
+
+`deposit()` and `send()` accept `opts.idempotencyKey: string`. If a prior call with the same key fully succeeded, the cached result is returned without re-submitting:
+
+```javascript
+await zk.deposit(0.1, { idempotencyKey: 'task-7-deposit' });
+// crash, restart, retry…
+await zk.deposit(0.1, { idempotencyKey: 'task-7-deposit' }); // returns cached, no new tx
+```
+
+The relay independently dedupes withdrawals by nullifier hash, so even without an idempotency key a duplicate `send()` returns the original signature instead of double-spending.
+
+## Privacy timing
+
+Privacy is statistical, not binary — it comes from the **anonymity set**, the pool of all deposits a withdrawal could plausibly have originated from. A withdrawal moments after a deposit is technically valid but *weakly* private: an observer linking by timing has high success odds. A withdrawal hours after a deposit, by which time many other deposits and withdrawals have happened, is *strongly* private.
+
+Humans get this for free because they walk away from the app between actions. Agents are programs and can fire `deposit()` and `send()` in the same loop — getting technically-correct but timing-linked transactions. The SDK does not enforce timing (the protocol is permissionless). **If your agent cares about strong privacy, deposit early, do other work, and call `send()` later.** If timing isn't your concern, fire away.
+
+## Worked example
+
+A complete autonomous-agent reference at [`examples/agent-private-payment.js`](https://github.com/svhq/zerok-app/blob/main/examples/agent-private-payment.js):
+
+```javascript
+const wallet = Keypair.fromSecretKey(/* … */);
+const zk = new ZeroK({ network: 'mainnet-beta', wallet, rpc, notesDir });
+
+// 1. Recover state from on-chain (handles container restart on a fresh disk)
+await zk.recover();
+
+// 2. Top up if the task amount exceeds private balance
+const need = TASK_AMOUNT - zk.balance().total;
+if (need > 0) {
+  await zk.deposit(Math.max(0.1, Math.ceil(need * 10) / 10),
+                   { idempotencyKey: `task-${taskId}-deposit` });
+}
+
+// 3. Pay privately
+const { signatures } = await zk.send(TASK_AMOUNT, recipient,
+                                     { idempotencyKey: `task-${taskId}-send` });
+```
+
+Run it with `AGENT_KEYPAIR=`, `AGENT_RECIPIENT=`, `AGENT_AMOUNT_SOL=` env vars.
+
+## Live mainnet status
+
+The SDK is fully validated on the live V3 mainnet program. Real on-chain proof from the smoke test:
+
+- **0.1 SOL round-trip:** deposit [`2QfDsxjE…etoT5`](https://solscan.io/tx/2QfDsxjED1kQe3r14QcN68cuRDpXBFY8dRqfdPd7vcNVoBEwr7g3KDsyNz3BwpSh97RLFnPePZuzecyr8KgetoT5) → fresh-container `recover()` → withdraw [`chM865yX…yuuM`](https://solscan.io/tx/chM865yXyfkeRVpv9tp5q4bQbu8WEJL8zr22kKgknPfVASTWoJiEQ1q2qsBi9bUyPd7WWC7Yi2vtP1wFXgxjuuM) → recipient received exactly 0.098 SOL.
+- **0.2 SOL multi-note:** auto-split into 2×0.1, deposits [`25xJ7TuU…JwcQ`](https://solscan.io/tx/25xJ7TuUUv3j2Vxg8aBKagBdd5ZW2oR6fi48Txbg87UnfrgKzFi7W2YKycbbXQthKFQJpi85rMu6sbWgcZwQJwcq) and [`2gKiJWkK…BZQw`](https://solscan.io/tx/2gKiJWkKUFTUmfCph9UUjLzJMiiduW52jX4HKheBuoynXVRKutgjgds7jmyucXk1ZYR2XoaZgzz2wztqkHPNBZQw) → withdraws [`4aKUvpzK…W6Wu`](https://solscan.io/tx/4aKUvpzKhBgSDtxKSsNc94QUqHQprYzVFoveaRKz63KxPYjAGGofc2Cx6dy9eCXCYFquLe3UyR34SxGoc9G3W6Wu) and [`2L7qfnYe…ux2i`](https://solscan.io/tx/2L7qfnYeedQqeBmtj7AjFU8NJxMp9DWK87JpAo5ahyAzjaksKQ8PuFHfPWbd1bSULhvGkdLTwG4bjoM9SPEkux2i) → recipient `2nEFZvTk…` received exactly 0.196 SOL with no on-chain link to the depositor.
+
+## Comparison
+
+|   | ZeroK Agent SDK | Solana Agent Kit | Coinbase AgentKit | GOAT SDK |
+|---|---|---|---|---|
+| Focus | Privacy primitives (mixer) | DeFi, NFTs, swaps | Multi-chain wallet ops | DeFi composability |
+| Methods | 4 (deposit/send/balance/recover) | 60+ tools | varies | varies |
+| ZK proofs | yes (Groth16 in-process) | no | no | no |
+| Gasless to recipient | yes (relay) | no | no | no |
+| Wallet recovery | yes (on-chain via `recover()`) | n/a | varies | n/a |
+
+ZeroK is the only one of these that hides the link between sender and recipient. It's *complementary* to general agent kits — bring it in when an agent needs to obscure a payment, then return to your everyday tools.
+
+## Roadmap
+
+- **Now:** JavaScript SDK, four methods, live on mainnet.
+- **Week 5:** MCP server wrapper. Claude Desktop, Claude Code, and any MCP-aware agent framework will be able to call ZeroK as native tool calls without integrating the SDK directly.
+- **Week 6+:** Python port for LangChain / OpenAI Agents / AutoGPT compatibility.
+
+## Source links
+
+- [SDK source](https://github.com/svhq/zerok-app/tree/main/sdk/agent) — `index.js`, `recover.js`, `README.md`
+- [Reference example](https://github.com/svhq/zerok-app/blob/main/examples/agent-private-payment.js)
+- [Test harness](https://github.com/svhq/zerok-app/blob/main/scripts/test-agent-sdk-v3.js) — unit / readonly / smoke modes
+- [App](https://app.zerok.app) · [Architecture](/architecture) · [How it works](/how-it-works) · [Privacy](/privacy)

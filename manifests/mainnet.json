@@ -1,0 +1,90 @@
+{
+  "pools": {
+    "mainnet-1sol-v2c": {
+      "poolId": "mainnet-1sol-v2c",
+      "denomination": "1000000000",
+      "denominationLabel": "1 SOL",
+      "pdas": {
+        "state": "6Sc4K38dNGjmxqHVweFu7DM8JzsvPYFrB3SbgdYfynRh",
+        "vault": "DiEe3MF7WF8uVmykZwSmfQYoziG8Sc24FZ5WhcwShgjH",
+        "vk": "Eq8zfewqErJqrJEJU9VBi2hABiUtJnpFvXo1CB7TEVBi",
+        "ringMetadata": "8YmiQ1kw5SxCgeMSHvHvmDGVSKxKV6hcJrtGTNGxN6Sn"
+      },
+      "altAddress": "2um1UhAFTyRNjFmQSZpmhjuBQfcCJbCboDmiHorSzCGq",
+      "shards": 20,
+      "shardCapacity": 128,
+      "ringCapacity": 2560,
+      "vkFinalized": true,
+      "status": "active"
+    },
+    "mainnet-10sol-v2c": {
+      "poolId": "mainnet-10sol-v2c",
+      "denomination": "10000000000",
+      "denominationLabel": "10 SOL",
+      "pdas": {
+        "state": "2S8gHNznFiyQfkST5iiFD3UmTV5z8rk9F8ZaicPSf4xT",
+        "vault": "7WoKPdqvicxTGuuEuWiQvU7bXi2xigkukAz1xbr2KQHK",
+        "vk": "DU1iRKtuBoHE7Yagweci4WHAWjgSa5qhXdUM62LXpz6h",
+        "ringMetadata": "GDW2yALF2CJLmm4ha6LXH112dCjA5k6tC7wZT2LBmdNy"
+      },
+      "altAddress": "AHLqFdtbTeuU5KotuJL5T5wYo1FCsWaLLE4sT8y7fp4v",
+      "shards": 20,
+      "shardCapacity": 128,
+      "ringCapacity": 2560,
+      "vkFinalized": true,
+      "status": "active"
+    },
+    "mainnet-100sol-v2c": {
+      "poolId": "mainnet-100sol-v2c",
+      "denomination": "100000000000",
+      "denominationLabel": "100 SOL",
+      "pdas": {
+        "state": "9XV44deAb2CUh5RrQFxrrPfb5jyUWE3sdmamDzt78xfM",
+        "vault": "AgCWC7BKDMskvJAKYvQW1pkiZDuoQveTZRS33yQw1m8u",
+        "vk": "FhqTftTm4AWB7KcCSygSvhEW3vMCN2tPrMpXWPzcW9ra",
+        "ringMetadata": "8QEvehZz4qm7N64EJ6kkUonJ6At2JF7K7BFHn6sZwxCr"
+      },
+      "altAddress": "6zPfE3uYZ5sFPVUzL5QJPyweaGpidgu6JZ2LL7Tw6VUX",
+      "shards": 20,
+      "shardCapacity": 128,
+      "ringCapacity": 2560,
+      "vkFinalized": true,
+      "status": "active"
+    },
+    "mainnet-1000sol-v2c": {
+      "poolId": "mainnet-1000sol-v2c",
+      "denomination": "1000000000000",
+      "denominationLabel": "1000 SOL",
+      "pdas": {
+        "state": "Eow1E5dS8vudBoegZfy9sbn99JtKfWn9ofRQGnpeWtpH",
+        "vault": "BM7oTYGTWdEr5Ev7TFKxytjYbgt6eVZwdj69ZButZwzY",
+        "vk": "2xGJd3LWiY6oDp9j7s8vdaePaRENkkdPNdVSPJTcu89u",
+        "ringMetadata": "7V1W41bhx3xK3UFrRq9M3k24epbRjCQL3tpuEvX7W9Wk"
+      },
+      "altAddress": "F3eX1LWNQWNM9hM5dodWFgFYxyL8wWZ9HYLtabmSu644",
+      "shards": 20,
+      "shardCapacity": 128,
+      "ringCapacity": 2560,
+      "vkFinalized": true,
+      "status": "active"
+    },
+    "mainnet-0p1sol-v2c": {
+      "poolId": "mainnet-0p1sol-v2c",
+      "denomination": "100000000",
+      "denominationLabel": "0.1 SOL",
+      "pdas": {
+        "state": "2KKwukWvZm88BVZ6KSUsyWbJPArWbaQLi78ui1pX8zgm",
+        "vault": "CfbE7btZt77cUrg7RM9aPnB8df77qVeKCysKyKDjJnZw",
+        "vk": "FCnNJdt7LbySNFypMyR1V17ohdThqxpu1Xq8mNFLFisE",
+        "ringMetadata": "8V4s9ghidvNA4dDMsQRok191GMyJAAGmJFfbCRVzYM3i"
+      },
+      "altAddress": "64WaSFtosAjB6LyBK4jadNd1YeivaUw1W76bWWsFu1vK",
+      "shards": 20,
+      "shardCapacity": 128,
+      "ringCapacity": 2560,
+      "vkFinalized": true,
+      "status": "active"
+    }
+  },
+  "lastUpdated": "2026-04-05"
+}

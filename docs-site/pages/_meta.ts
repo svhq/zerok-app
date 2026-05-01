@@ -5,5 +5,6 @@ export default {
   deposits: 'Deposits',
   withdrawals: 'Withdrawals',
   privacy: 'Privacy',
+  agents: 'For AI Agents',
   faq: 'FAQ',
 }

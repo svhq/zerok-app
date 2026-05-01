@@ -28,7 +28,11 @@ A privacy protocol is only as good as its worst-case experience. Week 3 ships th
 
 **Details**: [WEEKLY_UPDATES/week3.md](WEEKLY_UPDATES/week3.md) · **Relay**: [relay/server.js](relay/server.js)
 
-### Week 4 — _Coming soon_
+### Week 4 — Privacy, Optimized for AI Agents
+
+A privacy primitive that's only callable from a wallet popup is barely a primitive at all. Week 4 makes ZeroK directly usable by autonomous AI agents — the same protocol a human uses, exposed as a four-method JavaScript SDK with structured errors, idempotency keys, and two-layer persistence (instant disk cache + on-chain recovery from any device). Validated end-to-end on live mainnet with two real round-trips: a 0.1 SOL deposit→reboot→recover→withdraw cycle and a 0.2 SOL multi-note auto-split. Recipients received exactly the expected amounts (0.098 and 0.196 SOL) with no on-chain link to the depositor.
+
+**Details**: [WEEKLY_UPDATES/week4.md](WEEKLY_UPDATES/week4.md) · **SDK**: [sdk/agent/](sdk/agent/) · **Docs**: [docs.zerok.app/agents](https://docs.zerok.app/agents)
 
 ---
 
