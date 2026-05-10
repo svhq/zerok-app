@@ -85,16 +85,52 @@ const RELAY_PUBKEY   = new PublicKey('BEWNKrbVnLuWxPqVLSszwZpC6o86mC8RoSAWDaWwFi
 const _enc = new TextEncoder();
 
 const MIN_DEPOSIT_SOL = 0.1;
-const DEPOSIT_CU = 200_000; // V3 deposit (~80K CU) + safety margin. Memo w/ keys:[] costs only ~5K CU.
+const DEPOSIT_CU = 200_000; // single deposit_v2_clean path. ~80K deposit + ~40K memo + margin.
 
 // V5 batch planner constants — seed memo replaces N per-note memos with 1 per batch
-// With batch deposit instruction: ~25 notes/tx (vs 12 before), max 15 per pool per instruction
+// Three independent caps in tension:
+//   1. V5_SAFE_CAP — Solana tx-size ceiling, planner auto-shrinks if >1232 bytes
+//   2. BATCH_SAFE_CAP — per-pool heap limit inside the deposit_batch_v2_clean instruction
+//   3. MAX_COMMITS_PER_TX — wallet-safety cap (Phantom Blowfish heuristic, 2026-05-10)
 const V5_SAFE_CAP = 25;         // theoretical tx-size ceiling; exact-fit planner auto-shrinks if >1232 bytes
-// Batch instruction deployed + verified on mainnet (2026-04-09).
-// CLI single deposit, batch deposit, and withdrawal all confirmed working.
 const BATCH_SAFE_CAP = 15;      // max commitments per batch instruction (Solana heap limit)
-const V5_CU_PER_NOTE = 30_000;  // ~24-28K measured per commitment in batch instruction
-const V5_CU_OVERHEAD = 50_000;  // memo + compute budget ixs + validation overhead
+// Phantom Blowfish flags any transaction with ≥10 ZeroK commitments as "potentially malicious"
+// (empirically isolated 2026-05-10: 9-commit txs are clean, 10-commit txs trigger).
+// We cap at 9 per tx so each individual tx is Blowfish-clean. Multi-tx deposits then use
+// SEQUENTIAL `wallet.sendTransaction()` (NOT `signAndSendAllTransactions`) so each tx is
+// evaluated independently — the batch-drain heuristic also fires for multi-tx popups.
+// See: memory/phantom_blowfish_long_term_solutions.md
+const MAX_COMMITS_PER_TX = 9;
+
+// Per-component CU constants — calibrated 2026-05-10 from on-chain measurements.
+// Replaces the old `notes × constant + flat overhead` formula which under-allocated when
+// multiple pools shared a tx. The 2.3 SOL deposit failed because:
+//   - 1-pool batch (2 commits) used 64,558 CU
+//   - 0.1-pool batch (3 commits) used 91,186 CU
+//   - Memo program needed 47K CU but only had 44K left of the 200K total
+// New formula: COMPUTE_BUDGET + (pools × PER_POOL) + (notes × PER_NOTE) + (hasMemo × MEMO) all × 1.2
+// See: HANDOFF_2026-05-10_CU_BUDGET_FIX.md and feedback_cu_budget memory.
+const PER_NOTE_CU       = 22_500;     // measured 22,119 CU/commit in deposit_batch_v2_clean
+const PER_POOL_CU       = 25_000;     // measured 24,827 CU base per pool's batch ix (account loading + ring write)
+const MEMO_PROGRAM_CU   = 50_000;     // empty-signers SPL memo for v5 seed memo, ~365 CU/byte × ~129 max bytes ≈ 47K + margin
+const COMPUTE_BUDGET_CU =  1_500;     // setComputeUnitLimit + setComputeUnitPrice combined (~150 each + slack)
+const CU_SAFETY_FACTOR  =  1.20;      // 20% headroom for cross-validator drift
+const CU_FLOOR          = 200_000;    // single-deposit minimum
+const CU_CEILING        = 1_400_000;  // Solana per-tx hard cap
+
+/**
+ * Calculate the per-tx compute-unit budget for a batch deposit transaction.
+ * Naming every CU consumer explicitly so this scales correctly with multi-pool deposits.
+ */
+function calcBatchCuBudget(numPools: number, numNotes: number, hasMemo: boolean): number {
+  const base =
+    COMPUTE_BUDGET_CU +
+    numPools * PER_POOL_CU +
+    numNotes * PER_NOTE_CU +
+    (hasMemo ? MEMO_PROGRAM_CU : 0);
+  const withSafety = Math.ceil(base * CU_SAFETY_FACTOR);
+  return Math.min(Math.max(withSafety, CU_FLOOR), CU_CEILING);
+}
 
 // ─── Deposit helpers ──────────────────────────────────────────────────────────
 
@@ -293,6 +329,8 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
   const [depositError, setDepositError] = useState<string | null>(null);
   const [lastDepositedNotes, setLastDepositedNotes] = useState<V2Note[]>([]);
   const [showNotesExpanded, setShowNotesExpanded] = useState(false);
+  // Multi-popup approval progress (null when single-popup, {current, total} when multi)
+  const [approvalProgress, setApprovalProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Send state
   const [sendAmountSol, setSendAmountSol] = useState('');
@@ -459,6 +497,7 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
     if (depositInFlight.current) return; // Prevent double-click race
     depositInFlight.current = true;
     setDepositError(null);
+    setApprovalProgress(null);
     setDepositPhase('generating');
 
     try {
@@ -548,8 +587,13 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
       const TX_LIMIT = 1232;
       const HEURISTIC_PER_NOTE = 38;   // ~32 bytes per commitment + amortized batch overhead
       const HEURISTIC_OVERHEAD = 420;  // sig + header + keys + blockhash + compute + ALT + seed memo + batch headers
-      const heuristicMax = Math.min(V5_SAFE_CAP,
-        Math.max(1, Math.floor((TX_LIMIT - HEURISTIC_OVERHEAD) / HEURISTIC_PER_NOTE)));
+      // Three caps: V5_SAFE_CAP (Solana tx-size), MAX_COMMITS_PER_TX (Phantom Blowfish wallet
+      // safety, 9-commit threshold per 2026-05-10 evidence), and the byte-derived heuristic.
+      const heuristicMax = Math.min(
+        V5_SAFE_CAP,
+        MAX_COMMITS_PER_TX,
+        Math.max(1, Math.floor((TX_LIMIT - HEURISTIC_OVERHEAD) / HEURISTIC_PER_NOTE)),
+      );
 
       type NoteDataEntry = { denom: bigint; nullifier: bigint; secret: bigint; commitment: Uint8Array; nullifierHash: Uint8Array; commitHex: string; leafIndex: number; pathElements: string[]; pathIndices: number[]; merkleRoot: string };
       type Batch = { notes: NoteDataEntry[]; v0Tx: VersionedTransaction; size: number; seed: Uint8Array };
@@ -609,23 +653,24 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
             batchNotes.push({ denom, nullifier, secret, commitment, nullifierHash, commitHex, leafIndex, pathElements, pathIndices, merkleRoot });
           }
 
-          // Build BATCH deposit instructions (one per pool, NOT one per note)
-          // Group notes by denomination → build one deposit_batch_v2_clean per pool
-          // Min 200K (single deposit needs ~80-100K + safety margin), scale up for batches
-          const cuBudget = Math.min(Math.max(batchSize * V5_CU_PER_NOTE + V5_CU_OVERHEAD, 200_000), 1_400_000);
-          console.log(`[ZeroK] CU budget: ${cuBudget} (${batchSize} notes × ${V5_CU_PER_NOTE} + ${V5_CU_OVERHEAD}, floor=200K)`);
-          const batchIxs: TransactionInstruction[] = [
-            ComputeBudgetProgram.setComputeUnitLimit({ units: cuBudget }),
-            ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
-          ];
-
-          // Group batch notes by denomination
+          // Group batch notes by denomination FIRST so we know pool count for the CU formula
           const denomGroups = new Map<string, NoteDataEntry[]>();
           for (const note of batchNotes) {
             const dk = note.denom.toString();
             if (!denomGroups.has(dk)) denomGroups.set(dk, []);
             denomGroups.get(dk)!.push(note);
           }
+
+          // Build BATCH deposit instructions (one per pool, NOT one per note)
+          // CU formula explicitly accounts for: compute-budget ixs + per-pool overhead + per-note +
+          // Memo program + 1.2× safety factor. Replaces the old flat-overhead formula that
+          // under-allocated for multi-pool deposits (caused the 2026-05-10 production failure).
+          const cuBudget = calcBatchCuBudget(denomGroups.size, batchSize, /* hasMemo */ true);
+          console.log(`[ZeroK] CU budget: ${cuBudget} (pools=${denomGroups.size}, notes=${batchSize}, memo=true, ×${CU_SAFETY_FACTOR})`);
+          const batchIxs: TransactionInstruction[] = [
+            ComputeBudgetProgram.setComputeUnitLimit({ units: cuBudget }),
+            ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
+          ];
 
           // Build instructions per pool: single deposit for 1 note, batch for 2+
           for (const [denomKey, groupNotes] of denomGroups) {
@@ -796,46 +841,37 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
       );
 
       // ── Send batches ─────────────────────────────────────────────────────────
-      // Phantom path: signAndSendAllTransactions (ONE popup, Phantom controls submission)
-      // Non-Phantom path: sequential sendTransaction per batch (1 popup each)
-      // IMPORTANT: Do NOT use signAllTransactions + sendRawTransaction — Phantom support
-      // (Rory, 2026-04-06) confirmed this triggers Blowfish "malicious dApp" warning.
+      // Sequential `wallet.sendTransaction()` per tx. Each tx has ≤MAX_COMMITS_PER_TX (9)
+      // commitments by construction (planner cap), so each is independently Blowfish-clean.
+      //
+      // We deliberately do NOT use `signAndSendAllTransactions` here even when Phantom is
+      // detected: empirically (2026-05-10), presenting 2+ deposit txs to Phantom in one
+      // popup triggers the batch-drain heuristic regardless of per-tx commit count.
+      // Sequential individual signing was the proven mainnet-clean path from commit ddb2df4
+      // (Feb 26) and remains the only path that's clean for ≥10-commit aggregate deposits.
+      //
+      // UX: 1 popup for amounts producing ≤9 commits, N popups for larger. The deposit
+      // status indicator below shows "Approval k of N" so users aren't surprised by the
+      // multi-popup flow.
       const sigs: string[] = [];
 
-      // Detect Phantom provider with batch send support
-      const phantomProvider = typeof window !== 'undefined'
-        ? (window as any).phantom?.solana
-        : null;
-      const hasPhantomBatchSend = phantomProvider?.signAndSendAllTransactions
-        && phantomProvider?.isPhantom;
+      console.log(`[ZeroK] Sending ${batches.length} batch(es) sequentially via sendTransaction (≤9 commits/tx, Blowfish-clean)`);
 
-      // Collect V0 batch transactions
-      const v0Batches = batches.filter(b => b.v0Tx);
-      const usePhantomBatch = hasPhantomBatchSend && v0Batches.length > 1;
-
-      console.log(`[ZeroK] Phantom detected: ${!!phantomProvider}, hasSignAndSendAll: ${!!phantomProvider?.signAndSendAllTransactions}, isPhantom: ${!!phantomProvider?.isPhantom}, v0Batches: ${v0Batches.length}, usePhantomBatch: ${usePhantomBatch}`);
-
-      if (usePhantomBatch) {
-        // ── Phantom: pairwise batching (pairs of 2, confirm between pairs) ──
-        const v0Txs = v0Batches.map(b => b.v0Tx);
-        await sendWithPairwiseBatching(phantomProvider, v0Txs, sigs, sendTransaction, connection, blockhash, lastValidBlockHeight);
-      } else {
-        // ── Non-Phantom or single batch: sequential sendTransaction ──────────
-        // IMPORTANT: Confirm between batches that share pool state. Without this,
-        // batch N+1's simulation sees stale state from batch N and fails.
-        for (let b = 0; b < batches.length; b++) {
-          const batch = batches[b];
-          const t0 = Date.now();
-          console.log(`[ZeroK] Batch ${b+1}/${batches.length}: ${batch.notes.length} notes, ${batch.size} bytes`);
-          const sig = await sendTransaction(batch.v0Tx, connection);
-          sigs.push(sig);
-          console.log(`[ZeroK] Batch ${b+1} sent in ${Date.now() - t0}ms`);
-          // Confirm before next batch so state updates on-chain
-          if (b + 1 < batches.length) {
-            await connection.confirmTransaction(
-              { signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
-            console.log(`[ZeroK] Batch ${b+1} confirmed, sending next...`);
-          }
+      for (let b = 0; b < batches.length; b++) {
+        const batch = batches[b];
+        const t0 = Date.now();
+        console.log(`[ZeroK] Batch ${b+1}/${batches.length}: ${batch.notes.length} notes, ${batch.size} bytes`);
+        // Surface the per-popup progress so the deposit-phase indicator can show "Approval k/N"
+        setApprovalProgress(batches.length > 1 ? { current: b + 1, total: batches.length } : null);
+        const sig = await sendTransaction(batch.v0Tx, connection);
+        sigs.push(sig);
+        console.log(`[ZeroK] Batch ${b+1} sent in ${Date.now() - t0}ms`);
+        // Confirm before next batch so state updates on-chain (next tx's simulation sees
+        // post-batch state, avoiding stale-state simulation failures).
+        if (b + 1 < batches.length) {
+          await connection.confirmTransaction(
+            { signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+          console.log(`[ZeroK] Batch ${b+1} confirmed, requesting next approval...`);
         }
       }
 
@@ -854,6 +890,10 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
       }
 
       // Confirm all transactions (use strategy-based overload, not deprecated string overload)
+      // CRITICAL: confirmTransaction() only waits for the slot — it does NOT report tx errors.
+      // We MUST also fetch the tx and check meta.err before persisting notes. Otherwise a
+      // failed tx (e.g. CU exhaustion) leaves stale "unspent" notes in localStorage that
+      // reference a Merkle root that never made it on-chain. See HANDOFF_2026-05-10_CU_BUDGET_FIX.md.
       setDepositPhase('confirming');
       const uniqueSigs = [...new Set(sigs)];
       for (const sig of uniqueSigs) {
@@ -861,6 +901,22 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
           { signature: sig, blockhash, lastValidBlockHeight },
           'confirmed',
         );
+
+        // Re-fetch the tx status to check for on-chain errors. Skip-list propagation can take
+        // a moment, so retry once after a short delay if the lookup returns null.
+        let status = await connection.getSignatureStatus(sig, { searchTransactionHistory: true });
+        if (!status.value) {
+          await new Promise(r => setTimeout(r, 750));
+          status = await connection.getSignatureStatus(sig, { searchTransactionHistory: true });
+        }
+        if (status.value?.err) {
+          const errStr = JSON.stringify(status.value.err);
+          console.error(`[ZeroK] ❌ Deposit FAILED on-chain: ${sig.substring(0,16)}... err=${errStr}`);
+          throw new Error(
+            `Deposit transaction failed on-chain (${errStr}). Your wallet was not debited beyond the network fee. ` +
+            `This is usually a transient error — please retry. If it keeps happening, contact support.`
+          );
+        }
         console.log(`[ZeroK] Deposit CONFIRMED: ${sig.substring(0,16)}...`);
         // Mark confirmed in session journal
         for (let bIdx = 0; bIdx < batches.length; bIdx++) {
@@ -1119,6 +1175,9 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
               const label = `${Number(d) / 1e9} SOL`;
               grouped[label] = (grouped[label] || 0) + 1;
             }
+            // Number of wallet approvals = ceil(total commits / MAX_COMMITS_PER_TX)
+            // (matches the planner's per-tx cap). 1 popup for ≤9 commits, 2+ otherwise.
+            const projectedApprovals = Math.max(1, Math.ceil(splits.length / MAX_COMMITS_PER_TX));
             return (
               <div className="text-xs text-zk-text-muted bg-zk-surface/50 rounded-lg px-3 py-2">
                 <span className="text-zk-text-muted/60">You will receive:</span>
@@ -1130,6 +1189,11 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
                     ({Number(depositLamports - totalSplit) / 1e9} SOL cannot be deposited — below minimum pool size)
                   </span>
                 )}
+                {projectedApprovals > 1 && (
+                  <span className="ml-2 text-zk-text-muted/80">
+                    · {projectedApprovals} wallet approvals
+                  </span>
+                )}
               </div>
             );
           })()}
@@ -1139,7 +1203,11 @@ export default function PrivateCard({ onKeyReady }: { onKeyReady?: () => void })
             <div className="flex items-center gap-2 text-sm text-zk-teal">
               <span className="animate-spin inline-block w-4 h-4 border-2 border-zk-teal border-t-transparent rounded-full" />
               {depositPhase === 'generating' && 'Preparing deposit...'}
-              {depositPhase === 'signing' && 'Approve in your wallet...'}
+              {depositPhase === 'signing' && (
+                approvalProgress
+                  ? `Approve in your wallet (${approvalProgress.current} of ${approvalProgress.total})...`
+                  : 'Approve in your wallet...'
+              )}
               {depositPhase === 'confirming' && 'Confirming on-chain...'}
             </div>
           )}
