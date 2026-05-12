@@ -2,7 +2,7 @@
 
 **A noncustodial privacy protocol on Solana. Live on mainnet across five fixed-denomination pools, with gasless withdrawals.**
 
-`GPL-3.0` | `Solana` | `Groth16` | `Poseidon` | `Light Protocol`
+`GPL-3.0` | `Solana` | `Groth16` | `Poseidon`
 
 ---
 
