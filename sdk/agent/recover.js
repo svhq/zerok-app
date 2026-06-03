@@ -19,8 +19,10 @@
  * Privacy: identical to reading the public chain. No wallet identifier is
  * disclosed. Try-decrypt is a local-only operation.
  *
- * Scope (Stage 1): v3 JSON memos only — the format this SDK creates.
- * Web-client v4 binary memos and v5 batch-seed memos are TODO.
+ * Memo formats: v3 JSON (this SDK's writer), v4 binary, and v5 batch-seed
+ * (both written by app.zerok.app) are all read here via sdk/v2-core/memo.js.
+ * A single v5 batch memo expands to N notes; each is matched to its on-chain
+ * leaf event by Merkle-root consistency (parseAllDepositEventsFromLogs).
  */
 
 'use strict';
@@ -29,19 +31,23 @@ const { Connection, PublicKey } = require('@solana/web3.js');
 const { buildPoseidon } = require('circomlibjs');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 const {
   PROGRAM_ID,
   SEEDS,
+  STATE_OFFSETS,
+  ACCOUNT_SIZES,
+  ROOT_HISTORY_SIZE,
+  SHARD_CAPACITY,
   fieldToBytesBE,
   hexToFr,
   derivePDAs,
   deriveNullifierPda,
+  deriveAllShardPdas,
   computeRoot,
 } = require('../v3/canonical.js');
+const { decodeMemo, isZerokMemo } = require('../v2-core/memo.js');
 
-const MEMO_PREFIX_V3 = 'zerok:v3:';
 const TX_FETCH_BATCH = 8;
 const SIG_PAGE_LIMIT = 1000;
 
@@ -72,40 +78,16 @@ function cleanMemo(raw) {
 }
 
 /**
- * Try to AES-GCM-decrypt a v3 memo with `key`. Returns null on failure
- * (wrong key, malformed, not v3) — failure is the common case for other
- * people's notes.
+ * Parse ALL `DepositProofData` events from a tx's log messages.
+ * Layout (per event): disc(8) + leaf_index(u32 LE, 4) + root_after(BE, 32)
+ *   + siblings_be(20×32=640) + positions(20×u8=20) = 704 bytes.
+ *
+ * A single-deposit tx (v3/v4) emits one event; a v5 batch tx emits one event
+ * per leaf inserted. Returns events in log order.
  */
-function tryDecryptV3Memo(memoText, encryptionKey) {
-  let blob = memoText;
-  if (!blob.startsWith(MEMO_PREFIX_V3)) return null;
-  blob = blob.slice(MEMO_PREFIX_V3.length);
-
-  try {
-    const combined = Buffer.from(blob, 'base64');
-    if (combined.length < 12 + 16) return null;
-    const iv = combined.subarray(0, 12);
-    const ciphertext = combined.subarray(12, combined.length - 16);
-    const tag = combined.subarray(combined.length - 16);
-
-    const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey, iv);
-    decipher.setAuthTag(tag);
-    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-    const parsed = JSON.parse(plaintext.toString('utf8'));
-
-    if (parsed && parsed.n && parsed.s && parsed.d) return parsed;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Parse a `DepositProofData` event from a tx's log messages.
- * Layout: disc(8) + leaf_index(u32 LE, 4) + root_after(BE, 32) + siblings_be(20×32=640) + positions(20×u8=20) = 704 bytes.
- */
-function parseDepositEventFromLogs(logs) {
-  if (!Array.isArray(logs)) return null;
+function parseAllDepositEventsFromLogs(logs) {
+  const events = [];
+  if (!Array.isArray(logs)) return events;
   for (const log of logs) {
     if (!log.startsWith('Program data: ')) continue;
     let buf;
@@ -126,9 +108,48 @@ function parseDepositEventFromLogs(logs) {
     }
     const positions = [];
     for (let i = 0; i < 20; i++) positions.push(buf.readUInt8(off + i));
-    return { leafIndex, rootAfter, siblings, positions };
+    events.push({ leafIndex, rootAfter, siblings, positions });
   }
-  return null;
+  return events;
+}
+
+/**
+ * Build the set of every root currently valid for a pool — the in-state
+ * 256-entry ring plus all 20 shard rings — in ONE state fetch + ONE batched
+ * shard fetch. A note whose `currentRoot` is absent here belongs to a prior
+ * pool deployment (its tree was reset/redeployed): it is no longer withdrawable
+ * on that root, so we drop it. Mirrors the web client's root-in-history filter,
+ * but checks shards too (strictly keeps more valid, rotated-out notes).
+ *
+ * Returns null if state can't be read (filter then becomes a no-op — fail open).
+ */
+async function buildCurrentRootSet(connection, statePda) {
+  let stateInfo;
+  try {
+    stateInfo = await connection.getAccountInfo(statePda);
+  } catch {
+    return null;
+  }
+  if (!stateInfo) return null;
+  const roots = new Set();
+  const sd = stateInfo.data;
+  for (let i = 0; i < ROOT_HISTORY_SIZE; i++) {
+    const off = STATE_OFFSETS.ROOT_HISTORY + i * 32;
+    if (off + 32 <= sd.length) roots.add(sd.slice(off, off + 32).toString('hex'));
+  }
+  try {
+    const shardInfos = await connection.getMultipleAccountsInfo(deriveAllShardPdas(statePda));
+    for (const info of shardInfos) {
+      if (!info) continue;
+      for (let e = 0; e < SHARD_CAPACITY; e++) {
+        const off = ACCOUNT_SIZES.SHARD_HEADER + e * ACCOUNT_SIZES.SHARD_ENTRY;
+        if (off + 32 <= info.data.length) roots.add(info.data.slice(off, off + 32).toString('hex'));
+      }
+    }
+  } catch {
+    /* shards unreadable — fall back to in-state ring only */
+  }
+  return roots;
 }
 
 /**
@@ -251,17 +272,25 @@ async function recoverNotes({ connection, wallet, encryptionKey, network, notesD
     if (sigs.length === 0) continue;
 
     // ---- Phase 2: filter by memo + decrypt (no RPC) ----
+    // decodeMemo handles v3 (JSON), v4 (binary) and v5 (batch-seed → N notes);
+    // each call returns 0+ payloads of the uniform shape { d, n, s, v }.
     const memoSupported = sigs.some(s => s.memo != null);
     const candidates = memoSupported
-      ? sigs.filter(s => s.memo && cleanMemo(s.memo).startsWith(MEMO_PREFIX_V3))
+      ? sigs.filter(s => s.memo && isZerokMemo(cleanMemo(s.memo)))
       : sigs; // slow path: must fetch full tx to find memo
 
+    // A v5 batch can span multiple pools, so one batch tx appears in EVERY
+    // touched pool's signature history and its memo decodes to notes of several
+    // denominations. Keep only the notes whose denomination is THIS pool's, so
+    // each note is recovered exactly once (in its own pool) — no cross-pool dupes.
     const ownDeposits = []; // { signature, payload }
+    const keepForPool = (payload) => BigInt(payload.d) === pool.denomination;
     if (memoSupported) {
       for (const s of candidates) {
         const cleaned = cleanMemo(s.memo);
-        const payload = tryDecryptV3Memo(cleaned, encryptionKey);
-        if (payload) ownDeposits.push({ signature: s.signature, payload });
+        for (const payload of decodeMemo(cleaned, encryptionKey)) {
+          if (keepForPool(payload)) ownDeposits.push({ signature: s.signature, payload });
+        }
       }
     } else {
       // Slow path — fetch txs, scan instructions for memo program data
@@ -277,9 +306,10 @@ async function recoverNotes({ connection, wallet, encryptionKey, network, notesD
           const memo = extractMemoFromTx(tx);
           if (!memo) continue;
           const cleaned = cleanMemo(memo);
-          if (!cleaned.startsWith(MEMO_PREFIX_V3)) continue;
-          const payload = tryDecryptV3Memo(cleaned, encryptionKey);
-          if (payload) ownDeposits.push({ signature: chunk[i].signature, payload });
+          if (!isZerokMemo(cleaned)) continue;
+          for (const payload of decodeMemo(cleaned, encryptionKey)) {
+            if (keepForPool(payload)) ownDeposits.push({ signature: chunk[i].signature, payload });
+          }
         }
       }
     }
@@ -316,14 +346,20 @@ async function recoverNotes({ connection, wallet, encryptionKey, network, notesD
     }
 
     // ---- Phase 4: build full notes ----
+    // A v5 batch tx emits one DepositProofData event per leaf. Match each note
+    // to ITS event by Merkle-root consistency: the event whose (siblings,
+    // positions) re-hash this note's commitment up to event.rootAfter is the
+    // right leaf. Single-deposit txs (v3/v4) fall back to the lone event.
     const poolNotes = [];
+    const seenCommitments = new Set(); // guard signature-pagination overlap within a pool
     for (const dep of newDeposits) {
+      if (seenCommitments.has(dep._commitment)) continue; // same leaf seen twice this run
       const tx = txMap.get(dep.signature);
-      const event = tx?.meta?.logMessages
-        ? parseDepositEventFromLogs(tx.meta.logMessages)
-        : null;
+      const allEvents = tx?.meta?.logMessages
+        ? parseAllDepositEventsFromLogs(tx.meta.logMessages)
+        : [];
 
-      const nullifierHex = dep.payload.n;       // 62-char hex (no 0x)
+      const nullifierHex = dep.payload.n;       // nullifier hex (no 0x)
       const secretHex = dep.payload.s;
       const denomination = String(dep.payload.d);
 
@@ -333,8 +369,29 @@ async function recoverNotes({ connection, wallet, encryptionKey, network, notesD
       const nullifierHashBE = fieldToBytesBE(nullifierHashField);
       const nullifierHashHex = nullifierHashBE.toString('hex');
 
+      // Match this note's commitment to the event that produced its leaf.
+      const commitmentBig = BigInt('0x' + dep._commitment);
+      let event = null;
+      for (const ev of allEvents) {
+        const pathEls = ev.siblings.map(h => BigInt('0x' + h));
+        const computed = computeRoot(poseidon, commitmentBig, pathEls, ev.positions);
+        if (fieldToBytesBE(computed).toString('hex') === ev.rootAfter.replace(/^0x/, '')) {
+          event = ev;
+          break;
+        }
+      }
+      if (!event && allEvents.length === 1) event = allEvents[0]; // v3/v4 fallback
+
+      // No leaf for this note. If the tx DID emit leaf events and none is ours,
+      // the memo over-declared a note that was never inserted on-chain (a v5
+      // batch quirk): it holds no funds and can never be spent — drop it. Keep
+      // it only when we couldn't read any events (logs unavailable), so a real
+      // note isn't lost; it stays pathless and send() will treat it as stale.
+      if (!event && allEvents.length > 0) continue;
+
+      seenCommitments.add(dep._commitment);
       poolNotes.push({
-        version: 3,
+        version: dep.payload.v || 3,
         poolId: pool.poolId,
         network,
         programId: PROGRAM_ID.toBase58(),
@@ -354,9 +411,24 @@ async function recoverNotes({ connection, wallet, encryptionKey, network, notesD
       });
     }
 
+    // ---- Phase 4.5: drop notes from prior pool deployments (stale roots) ----
+    // A redeployed/reset pool reuses leaf indices, so two distinct commitments
+    // can each claim e.g. leaf 3 — one current, one from the old tree. Keep only
+    // notes whose post-insert root is still valid in THIS pool's current rings.
+    let livePoolNotes = poolNotes;
+    if (poolNotes.length > 0) {
+      const rootSet = await buildCurrentRootSet(connection, pool.statePda);
+      if (rootSet) {
+        livePoolNotes = poolNotes.filter(n => {
+          if (!n.currentRoot) return true; // can't check — keep (fail open)
+          return rootSet.has(n.currentRoot.replace(/^0x/, ''));
+        });
+      }
+    }
+
     // ---- Phase 5: spent-check via nullifier PDA existence ----
     const stateDerived = derivePDAs(pool.denomination).statePda;
-    const nullifierPdas = poolNotes.map(n => deriveNullifierPda(stateDerived, Buffer.from(n.nullifierHash, 'hex')));
+    const nullifierPdas = livePoolNotes.map(n => deriveNullifierPda(stateDerived, Buffer.from(n.nullifierHash, 'hex')));
     let spentInfos = [];
     try {
       // getMultipleAccountsInfo accepts up to 100 keys per call
@@ -367,16 +439,16 @@ async function recoverNotes({ connection, wallet, encryptionKey, network, notesD
       }
     } catch (e) {
       // Best effort — if it fails, mark all as 'recovered' and let send() fail per-note
-      spentInfos = poolNotes.map(() => null);
+      spentInfos = livePoolNotes.map(() => null);
     }
 
-    for (let i = 0; i < poolNotes.length; i++) {
+    for (let i = 0; i < livePoolNotes.length; i++) {
       const isSpent = spentInfos[i] != null;
-      poolNotes[i].status = isSpent ? 'spent' : 'unspent';
+      livePoolNotes[i].status = isSpent ? 'spent' : 'unspent';
       if (isSpent) totalSpent++;
     }
 
-    allRecovered.push(...poolNotes);
+    allRecovered.push(...livePoolNotes);
 
     // Save checkpoint at the most recent signature scanned
     if (firstSig) saveCheckpoint(notesDir, walletPubkey, pool.poolId, { lastSignature: firstSig });
@@ -415,7 +487,6 @@ function extractMemoFromTx(tx) {
 module.exports = {
   recoverNotes,
   // exported for tests / advanced callers
-  tryDecryptV3Memo,
-  parseDepositEventFromLogs,
+  parseAllDepositEventsFromLogs,
   cleanMemo,
 };
