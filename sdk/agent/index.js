@@ -97,7 +97,11 @@ class ZeroKError extends Error {
 class ZeroK {
   /**
    * @param {Object} options
-   * @param {string} options.network  - 'mainnet-beta' or 'devnet'
+   * @param {string} options.network  - 'mainnet-beta' (default, turnkey) or 'devnet'.
+   *   NOTE: devnet is for testing only and requires the env var ZEROK_PROGRAM_ID
+   *   set to the devnet program — the public devnet pools run a different program
+   *   than mainnet, so without it deposit/recover won't find any pools. Mainnet
+   *   needs no override.
    * @param {Keypair} options.wallet  - Solana Keypair (agent's wallet)
    * @param {string} [options.rpc]    - Custom RPC endpoint
    * @param {string} [options.relay]  - Custom relay URL
@@ -118,6 +122,14 @@ class ZeroK {
     if (!defaults && (!rpc || !relay)) {
       throw new ZeroKError('BAD_NETWORK', `Unknown network: ${network}`,
         'For custom networks pass rpc and relay manually, or use "mainnet-beta" / "devnet".');
+    }
+
+    // Devnet pools run a different program than the mainnet default; without an
+    // explicit ZEROK_PROGRAM_ID the SDK would derive mainnet PDAs on devnet and
+    // silently find nothing. Warn loudly instead of failing mysteriously later.
+    if (network === 'devnet' && !process.env.ZEROK_PROGRAM_ID) {
+      console.warn('[zerok] network "devnet" requires env ZEROK_PROGRAM_ID set to the devnet program — ' +
+        'without it, deposit/recover will not find any devnet pools. Mainnet needs no override. Devnet is for testing only.');
     }
 
     this.network = network;
@@ -271,7 +283,12 @@ class ZeroK {
       throw new ZeroKError('BAD_RECIPIENT', `Invalid recipient: ${e.message}`, 'Use a valid base58 Solana address.');
     }
 
+    // Snap to the 0.1-SOL denomination grid (notes are fixed-denomination).
     const target = BigInt(Math.round(Math.round(solAmount * 10) / 10 * 1e9));
+    if (target <= 0n) {
+      throw new ZeroKError('BAD_AMOUNT', `Amount ${solAmount} SOL rounds to 0 (minimum 0.1 SOL)`,
+        'Send at least 0.1 SOL.');
+    }
 
     const unspent = this._notes
       .filter(n => n.status !== 'spent' && this._isUsable(n))
@@ -294,6 +311,20 @@ class ZeroK {
 
     if (remaining > 0n) {
       const have = unspent.reduce((s, n) => s + BigInt(n.denomination), 0n);
+      if (have >= target) {
+        // Funds ARE sufficient, but fixed-denomination notes can't sum to exactly
+        // this amount. This is NOT "insufficient balance" — saying so would be
+        // contradictory (you hold more than you asked to send). Guide to a real
+        // sendable amount instead, mirroring the web app's nearest-amount hint.
+        const sendableDown = Number(target - remaining) / 1e9; // largest sum <= request (greedy is optimal on the denom ladder)
+        const smallestNote = Number(BigInt(unspent[unspent.length - 1].denomination)) / 1e9;
+        const held = this.balance().breakdown;
+        const suggestion = sendableDown > 0 ? sendableDown : smallestNote;
+        throw new ZeroKError('AMOUNT_NOT_DECOMPOSABLE',
+          `Can't make exactly ${solAmount} SOL from your fixed-denomination notes (you hold ${JSON.stringify(held)}). ` +
+          `Largest you can send at or below ${solAmount} is ${sendableDown} SOL; your smallest single note is ${smallestNote} SOL.`,
+          `Send an amount your notes can sum to — e.g. ${suggestion} SOL.`);
+      }
       throw new ZeroKError('INSUFFICIENT_BALANCE',
         `Want ${solAmount} SOL, have ${Number(have) / 1e9} SOL across ${unspent.length} notes.`,
         'Deposit more first via zk.deposit(), or call zk.recover() if notes were created in a previous session.');
@@ -369,7 +400,22 @@ class ZeroK {
       signatures.push(body.signature);
     }
 
-    const result = { sent: solAmount, fee: Number(totalFee) / 1e9, signatures };
+    // Report the amount actually moved (snapped to the grid), plus which notes
+    // were consumed and the post-send balance — so neither a human nor an agent
+    // is ever surprised about what left the wallet (the un-snapped input is
+    // echoed back as `requested`).
+    const result = {
+      sent: Number(target) / 1e9,
+      requested: solAmount,
+      fee: Number(totalFee) / 1e9,
+      signatures,
+      spent: selected.map((n, i) => ({
+        denomination: Number(BigInt(n.denomination)) / 1e9,
+        leafIndex: n.leafIndex,
+        tx: signatures[i],
+      })),
+      balanceAfter: this.balance().total,
+    };
     if (opts.idempotencyKey) this._saveIdempotency('send', opts.idempotencyKey, result);
     return result;
   }
@@ -394,8 +440,8 @@ class ZeroK {
 
   /**
    * Rebuild note state from on-chain memos (handles agent restarts).
-   * Implementation lives in ./recover.js (Stage 1 task #37).
-   * @returns {Promise<{ recovered:number, notes:Array }>}
+   * Implementation lives in ./recover.js.
+   * @returns {Promise<{ recovered:number, unspent:number, spent:number, scanned:number, decrypted:number, notes:Array }>}
    */
   async recover() {
     const { recoverNotes } = require('./recover.js');
@@ -416,7 +462,14 @@ class ZeroK {
         seen.add(n.commitment);
       }
     }
-    return { recovered: result.notes.length, notes: result.notes };
+    return {
+      recovered: result.notes.length,
+      unspent: result.notes.filter(n => n.status === 'unspent').length,
+      spent: result.spent,
+      scanned: result.scanned,
+      decrypted: result.decrypted,
+      notes: result.notes,
+    };
   }
 
   /**

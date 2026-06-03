@@ -65,9 +65,14 @@ Options: `{ idempotencyKey?: string }` — see [Idempotency](#idempotency).
 Send SOL privately to `recipient` via the gasless protocol relay. The recipient receives `denomination − fee`; no SOL link to your wallet.
 
 ```js
-const { sent, fee, signatures } = await zk.send(1.0, 'RecipientPubkey...');
-// → { sent: 1, fee: 0.003, signatures: [...] }
+const r = await zk.send(1.0, 'RecipientPubkey...');
+// → { sent: 1, requested: 1, fee: 0.003, signatures: [...],
+//     spent: [{ denomination: 1, leafIndex: 42, tx: '...' }], balanceAfter: 1.3 }
 ```
+
+The amount is **snapped to the 0.1-SOL grid** (notes are fixed-denomination), so `send(0.25)` actually moves 0.3 SOL. The result reports the real amount as `sent` and echoes your input as `requested`; `spent[]` lists exactly which notes/leaves were consumed, and `balanceAfter` is your new private balance — so you're never surprised about what left the wallet.
+
+Notes are **auto-selected** (largest denomination first, oldest within a denomination) — you don't pick individual notes; the balance is fungible. If you hold enough SOL but no combination sums to *exactly* the requested amount (e.g. you hold a single 1 SOL note and ask for 0.5), `send()` throws `AMOUNT_NOT_DECOMPOSABLE` and names the nearest sendable amount — it never mislabels this as "insufficient balance".
 
 Fee = `max(30 bps, 2_000_000 lamports)` per note (e.g. 0.003 SOL on a 1 SOL note, 0.002 SOL minimum on a 0.1 SOL note). The relay pays gas + nullifier rent and retains the fee.
 
@@ -90,7 +95,8 @@ If you're on a fresh container with no prior `notesDir`, also call `recover()` t
 Rebuild note state from on-chain memos. Same wallet → same notes, on any device.
 
 ```js
-const { recovered, notes } = await zk.recover();
+const { recovered, unspent, spent, scanned, notes } = await zk.recover();
+// → { recovered: 12, unspent: 5, spent: 7, scanned: 1840, decrypted: 12, notes: [...] }
 ```
 
 How it works: scans each pool's state-PDA signature history (bounded, ZeroK-only), filters by `zerok:v3:` memo prefix, AES-GCM-decrypts each candidate with your wallet-derived key, parses the `DepositProofData` event for the Merkle path, and checks each nullifier PDA for spent status. Per-pool checkpoints are persisted under `notesDir/.checkpoints/`, so subsequent recoveries are incremental.
@@ -137,9 +143,10 @@ catch (e) {
 |---|---|---|
 | `BAD_SIGNER` | Missing or malformed wallet | Reconstruct with `Keypair.fromSecretKey(...)` |
 | `BAD_NETWORK` | Unknown network | Pass `rpc` and `relay` manually for custom networks |
-| `BAD_AMOUNT` | Amount < 0.1 SOL or non-numeric | Pass a positive number ≥ 0.1 |
+| `BAD_AMOUNT` | Amount < 0.1 SOL, non-numeric, or rounds to 0 | Pass a positive number ≥ 0.1 |
 | `BAD_RECIPIENT` | Invalid base58 / pubkey | Validate the address before calling |
-| `INSUFFICIENT_BALANCE` | Not enough private notes for the send | Call `deposit()` first, or `recover()` if reattaching |
+| `INSUFFICIENT_BALANCE` | Total private balance is genuinely less than the send amount | Call `deposit()` first, or `recover()` if reattaching |
+| `AMOUNT_NOT_DECOMPOSABLE` | You hold enough SOL, but fixed-denomination notes can't sum to *exactly* this amount | Send an amount your notes can sum to — the error names the nearest sendable amount |
 | `INSUFFICIENT_WALLET_SOL` | Wallet can't afford deposit + fee | Top up the agent wallet |
 | `DEPOSIT_FAILED` | Tx failed on-chain | Inspect `notes/<denom>/pending_*.json` for stuck deposits |
 | `NULLIFIER_ALREADY_SPENT` | Note was already withdrawn | Mark note spent locally, pick another |
