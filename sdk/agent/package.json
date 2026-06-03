@@ -1,6 +1,6 @@
 {
   "name": "zerok-agent",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Privacy primitives for AI agents on Solana — ZeroK V3",
   "main": "index.js",
   "license": "MIT",
