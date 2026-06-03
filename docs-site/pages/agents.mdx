@@ -203,11 +203,34 @@ The SDK is fully validated on the live V3 mainnet program. Real on-chain proof f
 
 ZeroK is the only one of these that hides the link between sender and recipient. It's *complementary* to general agent kits — bring it in when an agent needs to obscure a payment, then return to your everyday tools.
 
+## MCP server
+
+Any MCP-aware agent (Claude Desktop, Claude Code, Cursor, custom frameworks) can call ZeroK as native tools — no SDK integration needed. Fetched from npm, one line:
+
+```bash
+claude mcp add zerok -e SOLANA_KEYPAIR=~/.config/solana/id.json -e ZEROK_NETWORK=mainnet-beta -- npx -y zerok-mcp
+```
+
+Or in `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "zerok": {
+      "command": "npx",
+      "args": ["-y", "zerok-mcp"],
+      "env": { "SOLANA_KEYPAIR": "~/.config/solana/id.json", "ZEROK_NETWORK": "mainnet-beta" }
+    }
+  }
+}
+```
+
+Tools: `zerok_address`, `zerok_balance`, `zerok_deposit`, `zerok_send`. The keypair stays on your machine. Then just ask your agent: *"Shield 1 SOL, then send 0.3 privately to `<address>`."*
+
 ## Roadmap
 
-- **Now:** JavaScript SDK, four methods, live on mainnet.
-- **Week 5:** MCP server wrapper. Claude Desktop, Claude Code, and any MCP-aware agent framework will be able to call ZeroK as native tool calls without integrating the SDK directly.
-- **Week 6+:** Python port for LangChain / OpenAI Agents / AutoGPT compatibility.
+- **Now:** JavaScript SDK (`zerok-agent`) + MCP server (`zerok-mcp`), live on mainnet.
+- **Next:** Python port for LangChain / OpenAI Agents / AutoGPT compatibility.
 
 ## Source links
 

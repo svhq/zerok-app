@@ -1,0 +1,42 @@
+# ZeroK — privacy primitive for Solana (for LLMs / AI agents)
+
+ZeroK lets an agent or app send SOL PRIVATELY and GASLESS on Solana. You shield SOL into
+fixed-denomination pools, then send to any address with no on-chain link to you; the relay
+pays the network fee so the recipient needs zero SOL. ZeroK is a tool you plug into — not an
+agent itself.
+
+Live mainnet program: HVcTokFF4rwvcU7sC7GjS317CSf7QDgfCvW7edijKS2v
+Pools (fixed denominations): 0.1, 1, 10, 100, 1000 SOL
+Fee: 0.3% per note, minimum 0.002 SOL. Withdrawals are gasless (relay pays).
+Amounts must be multiples of 0.1 SOL and composable from the denominations.
+
+## Two ways to integrate
+
+### MCP server (best for AI agents)
+Run: npx -y zerok-mcp   (published on npm; stdio MCP server)
+Env: SOLANA_KEYPAIR=<path to keypair json> (required), ZEROK_NETWORK=mainnet-beta|devnet,
+     ZEROK_RPC (optional), ZEROK_RELAY (optional), ZEROK_NOTES_DIR (optional).
+Tools:
+  - zerok_address()                      -> { address }
+  - zerok_balance()                      -> { total, notes, breakdown }
+  - zerok_deposit({ amount_sol })        -> { deposited, notes, breakdown, txSignatures }
+  - zerok_send({ amount_sol, recipient })-> { sent, recipient, fee, gasless, txSignatures }
+
+### SDK (Node, for code/apps) — npm install zerok-agent
+  const { Keypair } = require('@solana/web3.js');
+  const { ZeroK } = require('zerok-agent');
+  const zk = new ZeroK({ wallet });            // network defaults to mainnet-beta
+  await zk.deposit(2.3);                        // shield 2.3 SOL (auto-split)
+  await zk.send(1.0, 'RecipientAddress');       // private + gasless
+  zk.balance();                                 // { total, notes, breakdown }
+  zk.address();                                 // base58 pubkey
+
+## Key facts for correct usage
+- The funding wallet must hold the SOL being deposited. The recipient needs nothing.
+- Notes persist to disk automatically (default ./.zerok/<pubkey>); the AES key is derived
+  from the wallet signature, so the same wallet recovers the same notes anywhere. Back up
+  only the keypair.
+- send() throws a clear error if the private balance can't compose the requested amount.
+- The keypair stays local; it is never sent to the relay or any server.
+
+Docs: https://docs.zerok.app/agents
