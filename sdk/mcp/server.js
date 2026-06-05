@@ -3,9 +3,10 @@
  * ZeroK MCP server — gives any MCP-capable AI agent (Claude Desktop, Claude Code,
  * Cursor, custom agents…) private, GASLESS SOL payments on Solana.
  *
- * It exposes four tools — address, balance, deposit, send — over stdio. All the
- * ZK proving, note management, and relay communication is hidden; the agent just
- * decides amounts and recipients, exactly like a person using the web app.
+ * It exposes five tools — address, balance, deposit, send, recover — over stdio,
+ * full parity with the zerok-agent SDK. All the ZK proving, note management, and
+ * relay communication is hidden; the agent just decides amounts and recipients,
+ * exactly like a person using the web app.
  *
  * Configuration (via environment, set in your MCP client config):
  *   SOLANA_KEYPAIR   path to the wallet keypair JSON (e.g. ~/.config/solana/id.json)  [required]
@@ -75,8 +76,11 @@ server.registerTool('zerok_deposit', {
   title: 'Shield SOL (deposit)',
   description:
     'Shield (deposit) SOL into ZeroK privacy pools. The amount must be a multiple of 0.1 SOL and is auto-split into fixed denominations (0.1/1/10/100/1000). Funds come from the configured wallet, which must hold enough SOL plus a small network fee.',
-  inputSchema: { amount_sol: z.number().positive().describe('SOL to shield, a multiple of 0.1 (e.g. 1.5)') },
-}, async ({ amount_sol }) => { try { return ok(await getZk().deposit(amount_sol)); } catch (e) { return fail(e.message); } });
+  inputSchema: {
+    amount_sol: z.number().positive().describe('SOL to shield, a multiple of 0.1 (e.g. 1.5)'),
+    idempotency_key: z.string().optional().describe('Optional: reuse the same key on a retry to avoid a duplicate deposit'),
+  },
+}, async ({ amount_sol, idempotency_key }) => { try { return ok(await getZk().deposit(amount_sol, idempotency_key ? { idempotencyKey: idempotency_key } : {})); } catch (e) { return fail(e.message); } });
 
 server.registerTool('zerok_send', {
   title: 'Private gasless send',
@@ -85,7 +89,21 @@ server.registerTool('zerok_send', {
   inputSchema: {
     amount_sol: z.number().positive().describe('SOL to send privately'),
     recipient: z.string().describe('Recipient Solana address (base58)'),
+    idempotency_key: z.string().optional().describe('Optional: reuse the same key on a retry to avoid a duplicate send'),
   },
-}, async ({ amount_sol, recipient }) => { try { return ok(await getZk().send(amount_sol, recipient)); } catch (e) { return fail(e.message); } });
+}, async ({ amount_sol, recipient, idempotency_key }) => { try { return ok(await getZk().send(amount_sol, recipient, idempotency_key ? { idempotencyKey: idempotency_key } : {})); } catch (e) { return fail(e.message); } });
+
+server.registerTool('zerok_recover', {
+  title: 'Recover private notes',
+  description:
+    'Rebuild your private note state from on-chain memos — reattach to your shielded balance on a new device or after a restart. Same wallet → same notes, no backup file needed. Run this once on startup if balance() shows less than you expect; it scans the pools and decrypts only your own deposits.',
+  inputSchema: {},
+}, async () => {
+  try {
+    const zk = getZk();
+    const r = await zk.recover();
+    return ok({ recovered: r.recovered, unspent: r.unspent, spent: r.spent, scanned: r.scanned, balance: zk.balance() });
+  } catch (e) { return fail(e.message); }
+});
 
 await server.connect(new StdioServerTransport());

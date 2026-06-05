@@ -16,16 +16,18 @@ Amounts must be multiples of 0.1 SOL and composable from the denominations.
 Run: npx -y zerok-mcp   (published on npm; stdio MCP server)
 Env: SOLANA_KEYPAIR=<path to keypair json> (required), ZEROK_NETWORK=mainnet-beta|devnet,
      ZEROK_RPC (optional), ZEROK_RELAY (optional), ZEROK_NOTES_DIR (optional).
-Tools:
+Tools (full parity with the SDK):
   - zerok_address()                      -> { address }
   - zerok_balance()                      -> { total, notes, breakdown }
-  - zerok_deposit({ amount_sol })        -> { deposited, notes, breakdown, txSignatures }
-  - zerok_send({ amount_sol, recipient })-> { sent, recipient, fee, gasless, txSignatures }
+  - zerok_deposit({ amount_sol, idempotency_key? })          -> { notes, denominations, signatures }
+  - zerok_send({ amount_sol, recipient, idempotency_key? })  -> { sent, requested, fee, signatures, spent, balanceAfter }
+  - zerok_recover()                      -> { recovered, unspent, spent, scanned, balance }   (reattach to notes from chain on a new machine/restart)
 
 ### SDK (Node, for code/apps) — npm install zerok-agent
   const { Keypair } = require('@solana/web3.js');
   const { ZeroK } = require('zerok-agent');
   const zk = new ZeroK({ wallet });            // network defaults to mainnet-beta
+  await zk.recover();                           // reattach to notes from chain (new machine/restart)
   await zk.deposit(2.3);                        // shield 2.3 SOL (auto-split)
   await zk.send(1.0, 'RecipientAddress');       // private + gasless
   zk.balance();                                 // { total, notes, breakdown }
