@@ -58,7 +58,7 @@ function getZk() {
 const ok = (obj) => ({ content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] });
 const fail = (msg) => ({ content: [{ type: 'text', text: 'Error: ' + msg }], isError: true });
 
-const server = new McpServer({ name: 'zerok', version: '0.1.0' });
+const server = new McpServer({ name: 'zerok', version: '0.1.1' });
 
 server.registerTool('zerok_address', {
   title: 'ZeroK wallet address',

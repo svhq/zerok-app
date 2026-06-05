@@ -10,8 +10,9 @@ An **MCP server** that gives any MCP-capable AI agent — Claude Desktop, Claude
 |---|---|---|
 | `zerok_address` | — | Your wallet's public key (where deposits are funded from) |
 | `zerok_balance` | — | Your shielded (private) balance + note breakdown |
-| `zerok_deposit` | `amount_sol` | Shield SOL into the privacy pools (multiple of 0.1; auto-split) |
-| `zerok_send` | `amount_sol`, `recipient` | Send SOL **privately and gasless** — recipient needs no SOL, never sees you |
+| `zerok_deposit` | `amount_sol`, `idempotency_key?` | Shield SOL into the privacy pools (multiple of 0.1; auto-split) |
+| `zerok_send` | `amount_sol`, `recipient`, `idempotency_key?` | Send SOL **privately and gasless** — recipient needs no SOL, never sees you |
+| `zerok_recover` | — | Rebuild your private notes from on-chain — reattach to your balance on a new machine or after a restart (same wallet → same funds) |
 
 ## Setup
 
